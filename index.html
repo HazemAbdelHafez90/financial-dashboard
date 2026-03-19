@@ -984,15 +984,52 @@ function buildHistoricalData() {
 }
 
 /* ══════════════════════════════════════════
+   ONE-TIME MIGRATION: localStorage → DB
+══════════════════════════════════════════ */
+async function migrateWealthFromLocalStorage() {
+  if (localStorage.getItem('wealth_migrated')) return;
+  const jobs = [];
+  try {
+    const lsCash  = JSON.parse(localStorage.getItem('wealth_cash')  || '[]');
+    const lsAsset = JSON.parse(localStorage.getItem('wealth_assets') || '[]');
+    const lsRecv  = JSON.parse(localStorage.getItem('wealth_recv')  || '[]');
+    if (lsCash.length  && !STATE.wealth.cash.length)        jobs.push(db.from('wealth_cash').upsert(lsCash));
+    if (lsAsset.length && !STATE.wealth.assets.length)      jobs.push(db.from('wealth_assets').upsert(lsAsset));
+    if (lsRecv.length  && !STATE.wealth.receivables.length) jobs.push(db.from('wealth_receivables').upsert(lsRecv.map(r=>({id:r.id,person:r.person,amount:r.amount,currency:r.currency||'EGP',notes:r.notes||''}))));
+    if (jobs.length) {
+      await Promise.all(jobs);
+      if (lsCash.length)  STATE.wealth.cash        = lsCash;
+      if (lsAsset.length) STATE.wealth.assets      = lsAsset;
+      if (lsRecv.length)  STATE.wealth.receivables = lsRecv;
+    }
+    // Migrate income_meta per month
+    for (const key of Object.keys(STATE.months)) {
+      const meta = JSON.parse(localStorage.getItem(`income_meta_${key}`) || 'null');
+      if (meta?.usd && meta?.rate) {
+        const cfg = STATE.months[key];
+        if (!cfg.income_usd) {
+          await db.from('month_configs').update({ income_usd: meta.usd, income_rate: meta.rate }).eq('month_key', key);
+          STATE.months[key] = { ...cfg, income_usd: meta.usd, income_rate: meta.rate };
+        }
+      }
+    }
+    localStorage.setItem('wealth_migrated', '1');
+  } catch(e) { console.warn('Migration skipped:', e.message); }
+}
+
+/* ══════════════════════════════════════════
    DB INIT
 ══════════════════════════════════════════ */
 async function initDB() {
   showLoader(true);
   try {
-    const [expRes, baseRes, monthRes] = await Promise.all([
+    const [expRes, baseRes, monthRes, cashRes, assetRes, recvRes] = await Promise.all([
       db.from('expenses').select('*').order('date', { ascending: false }),
       db.from('base_budgets').select('*'),
-      db.from('month_configs').select('*')
+      db.from('month_configs').select('*'),
+      db.from('wealth_cash').select('*'),
+      db.from('wealth_assets').select('*'),
+      db.from('wealth_receivables').select('*')
     ]);
 
     if (expRes.error) throw expRes.error;
@@ -1013,8 +1050,18 @@ async function initDB() {
       startDate: r.start_date,
       label: r.label,
       income: Number(r.income || 0),
+      income_usd: r.income_usd || null,
+      income_rate: r.income_rate || null,
       specificBudgets: r.specific_budgets || []
     }]));
+
+    // Load wealth from DB
+    STATE.wealth.cash        = (cashRes.data  || []).map(r => ({ id:r.id, currency:r.currency, amount:Number(r.amount), rate:r.rate, notes:r.notes||'' }));
+    STATE.wealth.assets      = (assetRes.data || []).map(r => ({ id:r.id, name:r.name, type:r.type, qty:Number(r.qty), price:Number(r.price), notes:r.notes||'' }));
+    STATE.wealth.receivables = (recvRes.data  || []).map(r => ({ id:r.id, person:r.person, amount:Number(r.amount), currency:r.currency, notes:r.notes||'' }));
+
+    // One-time migration from localStorage → DB (for existing users)
+    await migrateWealthFromLocalStorage();
 
     // Seed default base budgets if empty
     if (!Object.keys(STATE.base).length) {
@@ -1114,6 +1161,8 @@ async function dbUpsertMonth(key, config) {
     started: config.started,
     start_date: config.startDate || null,
     income: config.income || 0,
+    income_usd: config.income_usd || null,
+    income_rate: config.income_rate || null,
     specific_budgets: config.specificBudgets || []
   }, { onConflict: 'month_key' });
   if (error) throw error;
@@ -2230,14 +2279,8 @@ async function doSaveIncome() {
     income = parseFloat(document.getElementById('income-amount')?.value) || 0;
   }
   if (!income) { showToast('Enter a salary amount','error'); return; }
-  // Persist USD meta in localStorage (no schema change needed)
-  if (usd && rate) {
-    localStorage.setItem(`income_meta_${key}`, JSON.stringify({ usd, rate, egp: income }));
-  } else {
-    localStorage.removeItem(`income_meta_${key}`);
-  }
   try {
-    const config = { ...(STATE.months[key] || {}), income };
+    const config = { ...(STATE.months[key] || {}), income, income_usd: usd||null, income_rate: rate||null };
     await dbUpsertMonth(key, config);
     closeModal('modal-income');
     const display = usd ? `$${usd.toLocaleString()} = ${income.toLocaleString('en-EG')} EGP` : `${income.toLocaleString('en-EG')} EGP`;
@@ -2248,7 +2291,10 @@ async function doSaveIncome() {
 }
 
 function getIncomeMeta(key) {
-  try { return JSON.parse(localStorage.getItem(`income_meta_${key}`)) || null; } catch { return null; }
+  const m = STATE.months[key];
+  if (!m) return null;
+  if (m.income_usd && m.income_rate) return { usd: m.income_usd, rate: m.income_rate, egp: m.income };
+  return null;
 }
 
 /* SPECIAL BUDGET */
@@ -2297,11 +2343,7 @@ async function deleteSpecialBudget(monthKey, specId) {
 /* ══════════════════════════════════════════
    WEALTH TAB
 ══════════════════════════════════════════ */
-// Storage helpers
-function wLoad(k)    { try { return JSON.parse(localStorage.getItem('wealth_'+k)||'[]'); } catch { return []; } }
-function wSave(k,v)  { localStorage.setItem('wealth_'+k, JSON.stringify(v)); }
-
-STATE.wealth = { cash: wLoad('cash'), assets: wLoad('assets'), receivables: wLoad('recv') };
+STATE.wealth = { cash: [], assets: [], receivables: [] };
 
 // Rate helpers
 function getRate(cur) {
@@ -2444,7 +2486,7 @@ function openAddCash(id) {
   updateCashPreview();
   openModal('modal-wealth-cash');
 }
-function saveWealthCash() {
+async function saveWealthCash() {
   const cur  = document.getElementById('wcash-currency').value;
   const amt  = parseFloat(document.getElementById('wcash-amount').value) || 0;
   const rate = cur==='EGP' ? 1 : parseFloat(document.getElementById('wcash-rate').value) || 0;
@@ -2452,16 +2494,19 @@ function saveWealthCash() {
   if (!amt) { showToast('Enter an amount','error'); return; }
   if (cur!=='EGP' && !rate) { showToast('Enter or fetch the rate','error'); return; }
   const id = document.getElementById('wcash-id').value || Date.now().toString();
-  STATE.wealth.cash = [...STATE.wealth.cash.filter(c=>c.id!==id), { id, currency:cur, amount:amt, rate, notes }];
-  wSave('cash', STATE.wealth.cash);
+  const row = { id, currency:cur, amount:amt, rate, notes };
+  const { error } = await db.from('wealth_cash').upsert(row, { onConflict: 'id' });
+  if (error) { showToast('Error: '+error.message,'error'); return; }
+  STATE.wealth.cash = [...STATE.wealth.cash.filter(c=>c.id!==id), row];
   closeModal('modal-wealth-cash');
   renderWealth();
   showToast('Cash saved');
 }
-function deleteWealthCash(id) {
+async function deleteWealthCash(id) {
   if (!confirm('Remove this cash entry?')) return;
+  const { error } = await db.from('wealth_cash').delete().eq('id', id);
+  if (error) { showToast('Error: '+error.message,'error'); return; }
   STATE.wealth.cash = STATE.wealth.cash.filter(c=>c.id!==id);
-  wSave('cash', STATE.wealth.cash);
   renderWealth();
 }
 
@@ -2486,7 +2531,7 @@ function openAddAsset(id) {
   updateAssetPreview();
   openModal('modal-wealth-asset');
 }
-function saveWealthAsset() {
+async function saveWealthAsset() {
   const type  = document.getElementById('wasset-type').value;
   const name  = document.getElementById('wasset-name').value.trim();
   const qty   = parseFloat(document.getElementById('wasset-qty').value) || 0;
@@ -2494,16 +2539,19 @@ function saveWealthAsset() {
   if (!name) { showToast('Enter a name','error'); return; }
   if (!qty || !price) { showToast('Enter quantity and price','error'); return; }
   const id = document.getElementById('wasset-id').value || Date.now().toString();
-  STATE.wealth.assets = [...STATE.wealth.assets.filter(a=>a.id!==id), { id, type, name, qty, price }];
-  wSave('assets', STATE.wealth.assets);
+  const row = { id, type, name, qty, price };
+  const { error } = await db.from('wealth_assets').upsert(row, { onConflict: 'id' });
+  if (error) { showToast('Error: '+error.message,'error'); return; }
+  STATE.wealth.assets = [...STATE.wealth.assets.filter(a=>a.id!==id), row];
   closeModal('modal-wealth-asset');
   renderWealth();
   showToast('Asset saved');
 }
-function deleteWealthAsset(id) {
+async function deleteWealthAsset(id) {
   if (!confirm('Remove this asset?')) return;
+  const { error } = await db.from('wealth_assets').delete().eq('id', id);
+  if (error) { showToast('Error: '+error.message,'error'); return; }
   STATE.wealth.assets = STATE.wealth.assets.filter(a=>a.id!==id);
-  wSave('assets', STATE.wealth.assets);
   renderWealth();
 }
 
@@ -2518,7 +2566,7 @@ function openAddRecv(id) {
   document.getElementById('wrecv-notes').value   = el?.notes    || '';
   openModal('modal-wealth-recv');
 }
-function saveWealthRecv() {
+async function saveWealthRecv() {
   const person   = document.getElementById('wrecv-person').value.trim();
   const amount   = parseFloat(document.getElementById('wrecv-amount').value) || 0;
   const currency = document.getElementById('wrecv-currency').value;
@@ -2526,16 +2574,19 @@ function saveWealthRecv() {
   if (!person) { showToast('Enter a person name','error'); return; }
   if (!amount) { showToast('Enter an amount','error'); return; }
   const id = document.getElementById('wrecv-id').value || Date.now().toString();
-  STATE.wealth.receivables = [...STATE.wealth.receivables.filter(r=>r.id!==id), { id, person, amount, currency, notes }];
-  wSave('recv', STATE.wealth.receivables);
+  const row = { id, person, amount, currency, notes };
+  const { error } = await db.from('wealth_receivables').upsert(row, { onConflict: 'id' });
+  if (error) { showToast('Error: '+error.message,'error'); return; }
+  STATE.wealth.receivables = [...STATE.wealth.receivables.filter(r=>r.id!==id), row];
   closeModal('modal-wealth-recv');
   renderWealth();
   showToast('Receivable saved');
 }
-function deleteWealthRecv(id) {
+async function deleteWealthRecv(id) {
   if (!confirm('Remove this receivable?')) return;
+  const { error } = await db.from('wealth_receivables').delete().eq('id', id);
+  if (error) { showToast('Error: '+error.message,'error'); return; }
   STATE.wealth.receivables = STATE.wealth.receivables.filter(r=>r.id!==id);
-  wSave('recv', STATE.wealth.receivables);
   renderWealth();
 }
 

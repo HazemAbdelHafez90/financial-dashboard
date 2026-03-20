@@ -1099,7 +1099,7 @@ async function initDB() {
   showLoader(true);
   try {
     const [expRes, baseRes, monthRes, cashRes, assetRes, recvRes] = await Promise.all([
-      db.from('expenses').select('*').order('date', { ascending: false }),
+      db.from('expenses').select('*').order('date', { ascending: false }).limit(9999),
       db.from('base_budgets').select('*'),
       db.from('month_configs').select('*'),
       db.from('wealth_cash').select('*'),
@@ -3015,14 +3015,11 @@ function renderWealth() {
 /* ══════════════════════════════════════════
    TABS
 ══════════════════════════════════════════ */
-let analysisRendered = false;
-
 function switchTab(id) {
   document.querySelectorAll('.tab').forEach(t => t.classList.toggle('active', t.dataset.tab===id));
   document.querySelectorAll('.tab-panel').forEach(p => p.classList.toggle('active', p.id==='panel-'+id));
   if (id==='analysis') {
-    if (!analysisRendered) { analysisRendered=true; setTimeout(renderAnalysis,50); }
-    else { renderArchivedMonths(); } // refresh archived list on every visit
+    setTimeout(renderAnalysis, 50);
   }
   if (id==='budgets')  renderBudgetsTab();
   if (id==='expenses') renderExpenses();

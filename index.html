@@ -89,6 +89,41 @@ body { min-height: 100vh; }
 }
 .db-dot.offline { background: var(--red); box-shadow: 0 0 6px var(--red); }
 
+/* ── PRIVACY MODE ── */
+.privacy-btn {
+  background: none; border: 1px solid var(--border2); border-radius: 8px;
+  color: var(--muted); cursor: pointer; padding: 5px 9px;
+  display: flex; align-items: center; gap: 5px;
+  font-size: 0.72rem; font-weight: 600; transition: all .15s;
+}
+.privacy-btn:hover { border-color: var(--amber); color: var(--amber); }
+.privacy-btn.active { border-color: var(--amber); color: var(--amber); background: rgba(251,191,36,.08); }
+
+body.privacy-on .stat-block-val,
+body.privacy-on .stat-block-sub,
+body.privacy-on .wealth-total-main,
+body.privacy-on .wealth-total-sub,
+body.privacy-on .wealth-breakdown-val,
+body.privacy-on .recent-amt,
+body.privacy-on .wealth-table-wrap td,
+body.privacy-on .private-val {
+  filter: blur(7px);
+  user-select: none;
+  transition: filter .25s ease;
+  border-radius: 4px;
+  cursor: pointer;
+}
+body.privacy-on .stat-block-val:hover,
+body.privacy-on .stat-block-sub:hover,
+body.privacy-on .wealth-total-main:hover,
+body.privacy-on .wealth-total-sub:hover,
+body.privacy-on .wealth-breakdown-val:hover,
+body.privacy-on .recent-amt:hover,
+body.privacy-on .wealth-table-wrap td:hover,
+body.privacy-on .private-val:hover {
+  filter: blur(0px);
+}
+
 /* Mobile add button */
 .mobile-add-btn {
   display: none;
@@ -420,6 +455,12 @@ tr:hover td { background: rgba(255,255,255,0.02); }
   <div class="top-header">
     <div class="logo">Hazem <span>Finance</span></div>
     <div class="header-right">
+      <button class="privacy-btn" id="privacy-btn" onclick="togglePrivacy()" title="Hide/show numbers">
+        <svg id="privacy-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/>
+        </svg>
+        <span id="privacy-label">Hide</span>
+      </button>
       <div class="db-status">
         <div class="db-dot" id="db-dot"></div>
         <span id="db-status-text">Supabase</span>
@@ -1389,8 +1430,8 @@ function buildBCard(name, budget, spent, pct, isSpecial=false) {
       </div>
       <div class="bcard-bar"><div class="bcard-bar-fill" data-w="${Math.min(pct,100)}" style="background:${color}"></div></div>
       <div class="bcard-amounts">
-        <span>${spent.toLocaleString('en-EG')} spent</span>
-        <span>of ${budget.toLocaleString('en-EG')}</span>
+        <span class="private-val">${spent.toLocaleString('en-EG')} spent</span>
+        <span class="private-val">of ${budget.toLocaleString('en-EG')}</span>
       </div>
     </div>`;
 }
@@ -1452,7 +1493,7 @@ function renderExpenses() {
       <td style="white-space:nowrap">${fmtDate(e.date)}</td>
       <td><span class="cat-pill">${e.category}</span></td>
       <td style="color:var(--muted);max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${e.description||'—'}</td>
-      <td style="font-weight:700;color:var(--amber)">${e.amount.toLocaleString('en-EG')}</td>
+      <td style="font-weight:700;color:var(--amber)" class="private-val">${e.amount.toLocaleString('en-EG')}</td>
       <td><span class="type-pill ${(e.type||'Planned').toLowerCase()}">${e.type||'Planned'}</span></td>
       <td>
         <div class="row-actions">
@@ -1712,7 +1753,7 @@ function renderMonthDetailTable() {
       <td style="padding:10px 16px;white-space:nowrap;color:var(--muted);font-size:0.8rem">${fmtDate(e.date)}</td>
       <td style="padding:10px 12px"><span class="cat-pill">${e.category}</span></td>
       <td style="padding:10px 12px;color:var(--muted);max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${(e.description||'').replace(/"/g,'&quot;')}">${e.description||'—'}</td>
-      <td style="padding:10px 12px;text-align:right;font-weight:700;color:var(--amber);white-space:nowrap">${e.amount.toLocaleString('en-EG')}</td>
+      <td style="padding:10px 12px;text-align:right;font-weight:700;color:var(--amber);white-space:nowrap" class="private-val">${e.amount.toLocaleString('en-EG')}</td>
       <td style="padding:10px 12px"><span class="type-pill ${(e.type||'Planned').toLowerCase()}">${e.type||'Planned'}</span></td>
       <td style="padding:10px 12px">
         <div class="row-actions">
@@ -2821,6 +2862,35 @@ document.querySelectorAll('.modal-overlay').forEach(overlay => {
 /* ══════════════════════════════════════════
    UI HELPERS
 ══════════════════════════════════════════ */
+/* ── PRIVACY TOGGLE ── */
+const EYE_OPEN  = `<path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/>`;
+const EYE_SHUT  = `<path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94"/><path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19"/><line x1="1" y1="1" x2="23" y2="23"/>`;
+
+function togglePrivacy() {
+  const on = document.body.classList.toggle('privacy-on');
+  localStorage.setItem('privacy_mode', on ? '1' : '0');
+  const btn   = document.getElementById('privacy-btn');
+  const icon  = document.getElementById('privacy-icon');
+  const label = document.getElementById('privacy-label');
+  if (btn)   btn.classList.toggle('active', on);
+  if (icon)  icon.innerHTML = on ? EYE_SHUT : EYE_OPEN;
+  if (label) label.textContent = on ? 'Show' : 'Hide';
+}
+// Restore on load
+(function() {
+  if (localStorage.getItem('privacy_mode') === '1') {
+    document.body.classList.add('privacy-on');
+    document.addEventListener('DOMContentLoaded', () => {
+      const btn   = document.getElementById('privacy-btn');
+      const icon  = document.getElementById('privacy-icon');
+      const label = document.getElementById('privacy-label');
+      if (btn)   btn.classList.add('active');
+      if (icon)  icon.innerHTML = EYE_SHUT;
+      if (label) label.textContent = 'Show';
+    });
+  }
+})();
+
 function showLoader(show) {
   const el = document.getElementById('db-loader');
   if (el) el.classList.toggle('hidden', !show);

@@ -332,6 +332,14 @@ def get_detail_expenses(sheet, year, month, month_key):
     return expenses
 
 
+def get_detail_categories_from_expenses(detail_expenses):
+    """
+    Build the set of categories that have individual detail records.
+    More reliable than reading the pivot (pivot categories are often blank due to merged cells).
+    """
+    return {e["category"] for e in detail_expenses if e.get("category")}
+
+
 # ── Budget / lump-sum extraction ──────────────────────────────────────────────
 
 def get_budget_expenses(sheet, year, month, month_key, detail_categories):
@@ -393,13 +401,16 @@ def get_budget_expenses(sheet, year, month, month_key, detail_categories):
             continue
 
         raw_cat = str(cell_val(row[0])).strip()
-        if not raw_cat or raw_cat.lower() in ("total", ""):
+        # Skip blank rows, "Total" rows (any spacing/casing variant), and subtotal-like rows
+        stripped_lower = raw_cat.lower().replace(" ", "").replace("\xa0", "")
+        if not raw_cat or stripped_lower in ("total", "grandtotal", "subtotal", ""):
             continue
 
         norm_cat = normalize_cat(raw_cat)
 
-        # Skip categories that are in detail_categories (they already have individual records)
-        if norm_cat in detail_categories:
+        # Skip categories already covered by individual detail records (case-insensitive)
+        detail_lower = {c.lower() for c in detail_categories}
+        if norm_cat.lower() in detail_lower:
             continue
 
         # Get spent amount
@@ -463,7 +474,7 @@ def process_early_sheet(sheet, year, month, month_key, label):
                 if not row or not row[0].value:
                     continue
                 raw_cat = str(cell_val(row[0])).strip()
-                if not raw_cat or raw_cat.lower() in ("total", ""):
+                if not raw_cat or raw_cat.lower().replace(" ","") in ("total","grandtotal","subtotal",""):
                     continue
                 norm_cat = normalize_cat(raw_cat)
                 spent = safe_float(cell_val(row[spent_col])) if spent_col < len(row) else None
@@ -485,7 +496,7 @@ def process_early_sheet(sheet, year, month, month_key, label):
                 if not row or not row[0].value:
                     continue
                 raw_item = str(cell_val(row[0])).strip()
-                if not raw_item or raw_item.lower() in ("total", ""):
+                if not raw_item or raw_item.lower().replace(" ","") in ("total","grandtotal","subtotal",""):
                     continue
                 amount = safe_float(cell_val(row[amount_col])) if amount_col < len(row) else None
                 if not amount or amount <= 0:
@@ -674,14 +685,11 @@ def process_month(doc, sheet_name, year, month, month_key, label):
         # Get category set from detail expenses
         detail_categories = set(e["category"] for e in detail_expenses if e["category"])
     else:
-        # Normal case: Details Pivot + Details tables in same sheet
-        detail_categories = get_detail_categories_from_pivot(sheet)
+        # Normal case: get individual expenses from Details table
         detail_expenses = get_detail_expenses(sheet, year, month, month_key)
-        # Filter detail expenses to only those in detail_categories
-        # (handles case where Details table has extra rows)
-        # Actually keep all detail expenses regardless
-        # BUT for lump-sum determination use the categories present in pivot
-        # (which means we already have the right set)
+        # Derive detail_categories from the actual detail records (more reliable than pivot —
+        # pivot category column is often blank due to merged cells in Numbers)
+        detail_categories = get_detail_categories_from_expenses(detail_expenses)
 
     # ── Budget lump-sum expenses ──
     budget_expenses = get_budget_expenses(
@@ -715,9 +723,9 @@ def main():
     for sheet_name, (year, month, label) in SHEET_MONTH_MAP.items():
         month_key = f"{year:04d}-{month:02d}"
 
-        # Skip Mar-26 (already imported)
-        if month_key == "2026-03":
-            print(f"  SKIP {sheet_name} ({month_key}) — already imported")
+        # Only re-import Jan-2024 through Feb-2026 (2023 months are untouched, Mar-26 is manual)
+        if month_key < "2024-01" or month_key > "2026-02":
+            print(f"  SKIP {sheet_name} ({month_key})")
             continue
 
         # Verify sheet exists

@@ -2985,9 +2985,9 @@ function renderWealth() {
       ].map(s=>`
       <div class="wealth-breakdown-item" onclick="${s.onclick}" style="cursor:pointer;transition:border-color .15s" onmouseover="this.style.borderColor=\'${s.color}\'" onmouseout="this.style.borderColor=\'\'">
         <div class="wealth-breakdown-label">${s.label}</div>
-        <div class="wealth-breakdown-val" style="color:${s.color}">${s.usd?fmtUSD(s.usd,0):fmtEGP(s.egp)}</div>
-        ${s.usd?`<div style="font-size:0.72rem;color:var(--muted)">${fmtEGP(s.egp)}</div>`:''}
-        <div style="font-size:0.68rem;color:var(--muted);margin-top:4px">${s.pct}% of total</div>
+        <div class="wealth-breakdown-val private-val" style="color:${s.color}">${s.usd?fmtUSD(s.usd,0):fmtEGP(s.egp)}</div>
+        ${s.usd?`<div class="private-val" style="font-size:0.72rem;color:var(--muted)">${fmtEGP(s.egp)}</div>`:''}
+        <div class="private-val" style="font-size:0.68rem;color:var(--muted);margin-top:4px">${s.pct}% of total</div>
       </div>`).join('')}
     </div>
   </div>

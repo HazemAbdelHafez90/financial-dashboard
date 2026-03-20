@@ -605,14 +605,6 @@ tr:hover td { background: rgba(255,255,255,0.02); }
       <div id="month-dive-content"></div>
     </div>
 
-    <!-- Archived Months -->
-    <div id="archived-section" style="display:none">
-      <div class="section-title" style="margin:28px 0 14px;">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="flex-shrink:0"><path d="M21 8v13H3V8"/><path d="M23 3H1v5h22V3z"/><path d="M10 12h4"/></svg>
-        Archived Months
-      </div>
-      <div class="month-planning-grid" id="archived-months-grid"></div>
-    </div>
   </div>
 </div>
 
@@ -1813,112 +1805,11 @@ async function deleteFromDetail(id) {
 }
 
 function renderArchivedMonths() {
-  // Archived = has startDate (was active) but started=false
-  const archived = Object.entries(STATE.months)
-    .filter(([k, c]) => !c.started && c.startDate)
-    .sort(([a],[b]) => b.localeCompare(a));
-
-  const section = document.getElementById('archived-section');
-  const grid    = document.getElementById('archived-months-grid');
-  if (!section || !grid) return;
-
-  if (!archived.length) { section.style.display='none'; return; }
-  section.style.display = 'block';
-
-  const base = STATE.base;
-  grid.innerHTML = archived.map(([key, config]) => {
-    const expenses   = STATE.expenses.filter(e => (e.month_key || dateToMonthKey(e.date)) === key);
-    const spent      = expenses.reduce((s,e)=>s+e.amount, 0);
-    const unplanned  = expenses.filter(e=>e.type==='Unplanned').reduce((s,e)=>s+e.amount, 0);
-    const budget     = Object.values(base).reduce((s,v)=>s+v,0) + (config.specificBudgets||[]).reduce((s,b)=>s+b.amount,0);
-    const archIncome = config.income || 0;
-    const archMeta   = getIncomeMeta(key);
-    // Savings = Salary - Configured Budget - Unplanned
-    const archSavings = archIncome > 0 ? archIncome - budget - unplanned : budget - spent;
-    const archSavingsUsd = archMeta?.rate ? archSavings / archMeta.rate : null;
-    const archSavePct = archIncome > 0 ? (archSavings/archIncome*100).toFixed(0) : budget>0?(archSavings/budget*100).toFixed(0):0;
-    const saved      = archSavings;
-    const savePct    = archSavePct;
-    const pct        = budget > 0 ? Math.min(spent/budget*100, 100) : 0;
-    const color      = gaugeColor(pct);
-    const specs      = config.specificBudgets||[];
-    const byCategory = {};
-    expenses.forEach(e => { byCategory[e.category] = (byCategory[e.category]||0) + e.amount; });
-
-    return `
-      <div class="month-plan-card">
-        <div class="month-plan-header">
-          <div>
-            <div class="month-plan-title">${config.label || monthLabel(key)}</div>
-            <div style="font-size:0.72rem;color:var(--muted);margin-top:2px">
-              Archived · ${fmtDate(config.startDate)}
-            </div>
-          </div>
-          <div style="text-align:right">
-            <div style="font-size:0.78rem;font-weight:700;color:${saved>=0?'var(--green)':'var(--red)'}">
-              ${saved>=0?'Saved':'Over'}&nbsp;${archSavingsUsd!==null?'$'+Math.abs(archSavingsUsd).toLocaleString(undefined,{maximumFractionDigits:0}):Math.abs(saved).toLocaleString('en-EG')+' EGP'}
-            </div>
-            ${archSavingsUsd!==null?`<div style="font-size:0.68rem;color:var(--muted)">${Math.abs(saved).toLocaleString('en-EG')} EGP</div>`:''}
-            <div style="font-size:0.7rem;color:var(--muted)">${savePct}% save rate</div>
-            <button onclick="openIncomeModal('${key}')" style="margin-top:4px;background:none;border:none;color:var(--blue);font-size:0.68rem;cursor:pointer;padding:0;font-weight:600">
-              ${archMeta?.usd?'✏️ $'+archMeta.usd.toLocaleString():archIncome>0?'✏️ '+fmtShort(archIncome)+' EGP':'+ Set salary'}
-            </button>
-          </div>
-        </div>
-        <!-- Spending bar -->
-        <div class="bcard-bar" style="height:5px;margin-bottom:10px">
-          <div class="bcard-bar-fill arch-bar-${key.replace('-','')}" data-w="${pct}" style="background:${color}"></div>
-        </div>
-        <!-- Stats row -->
-        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:${specs.length?'12px':'0'}">
-          <div style="background:var(--bg3);border-radius:6px;padding:8px 10px">
-            <div style="font-size:0.68rem;color:var(--muted);text-transform:uppercase;font-weight:600">Spent</div>
-            <div style="font-size:0.82rem;font-weight:700;color:var(--amber)">${fmtShort(spent)}</div>
-          </div>
-          <div style="background:var(--bg3);border-radius:6px;padding:8px 10px">
-            <div style="font-size:0.68rem;color:var(--muted);text-transform:uppercase;font-weight:600">Budget</div>
-            <div style="font-size:0.82rem;font-weight:700">${fmtShort(budget)}</div>
-          </div>
-          <div style="background:var(--bg3);border-radius:6px;padding:8px 10px">
-            <div style="font-size:0.68rem;color:var(--muted);text-transform:uppercase;font-weight:600">Expenses</div>
-            <div style="font-size:0.82rem;font-weight:700">${expenses.length}</div>
-          </div>
-        </div>
-        ${specs.length ? `
-        <div style="border-top:1px solid var(--border);padding-top:10px;margin-top:4px">
-          <div style="font-size:0.7rem;color:var(--muted);font-weight:600;text-transform:uppercase;margin-bottom:6px">Special budgets</div>
-          ${specs.map(s=>{
-            const ss = byCategory[s.name]||0;
-            const sp = s.amount>0?Math.min(ss/s.amount*100,100):0;
-            return `<div style="display:flex;justify-content:space-between;font-size:0.78rem;padding:3px 0">
-              <span style="color:var(--muted)">${s.name}</span>
-              <span style="color:var(--amber);font-weight:600">${ss.toLocaleString('en-EG')} / ${s.amount.toLocaleString('en-EG')}</span>
-            </div>`;
-          }).join('')}
-        </div>` : ''}
-        <!-- View details button -->
-        <div style="border-top:1px solid var(--border);padding-top:12px;margin-top:12px">
-          <button onclick="openMonthDetail('${key}')" style="width:100%;padding:8px;background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius-sm);color:var(--text);font-size:0.8rem;font-weight:600;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px;transition:all 0.2s" onmouseover="this.style.background='var(--amber-dim)';this.style.borderColor='var(--amber-glow)';this.style.color='var(--amber)'" onmouseout="this.style.background='var(--bg3)';this.style.borderColor='var(--border)';this.style.color='var(--text)'">
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-            View ${expenses.length} Expenses
-          </button>
-        </div>
-      </div>`;
-  }).join('');
-
-  // Animate bars
-  setTimeout(() => {
-    document.querySelectorAll('[class^="arch-bar-"]').forEach(el => {
-      el.style.width = el.getAttribute('data-w') + '%';
-    });
-  }, 80);
-
-  // Populate month dropdown
+  // Populate month dropdown only
   const sel = document.getElementById('dive-month-select');
   if (sel) {
     const prev = sel.value;
-    const allKeys = Object.entries(STATE.months)
-      .sort(([a],[b]) => b.localeCompare(a));
+    const allKeys = Object.entries(STATE.months).sort(([a],[b]) => b.localeCompare(a));
     sel.innerHTML = `<option value="">— Select a month —</option>` +
       allKeys.map(([k,c]) => `<option value="${k}"${k===prev?' selected':''}>${c.label||monthLabel(k)}${c.started?' (Active)':''}</option>`).join('');
     if (prev) renderMonthDive(prev);

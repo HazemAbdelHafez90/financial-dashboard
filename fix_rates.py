@@ -113,11 +113,12 @@ def get_income_data(sheet):
             for row in rows[1:]:
                 currency = str(cell_val(row[0])).strip().upper() if cell_val(row[0]) else ""
                 if currency == "USD":
-                    # Priority: Black market multiplier first
+                    # Priority: Black market multiplier first; "Normal" is rate, "Black market value" is total — skip it
                     rate_col = None
                     for col_name in ["black market multiplier",
                                      "mutiplier", "multiplier",
-                                     "bank rate", "conversion rate", "normal value"]:
+                                     "bank rate", "conversion rate",
+                                     "normal value", "normal"]:
                         if col_name in header:
                             rate_col = header.index(col_name)
                             break

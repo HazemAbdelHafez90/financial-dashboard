@@ -576,6 +576,14 @@ tr:hover td { background: rgba(255,255,255,0.02); }
 
   <!-- ANALYSIS -->
   <div class="tab-panel" id="panel-analysis">
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:16px;flex-wrap:wrap">
+      <span style="font-size:0.72rem;font-weight:600;text-transform:uppercase;letter-spacing:.05em;color:var(--muted)">Show:</span>
+      <button class="page-btn active" id="yr-btn-all"  onclick="setAnalysisYear('all')">All Time</button>
+      <button class="page-btn"        id="yr-btn-2024" onclick="setAnalysisYear('2024')">2024</button>
+      <button class="page-btn"        id="yr-btn-2025" onclick="setAnalysisYear('2025')">2025</button>
+      <button class="page-btn"        id="yr-btn-2026" onclick="setAnalysisYear('2026')">2026</button>
+      <button class="page-btn"        id="yr-btn-2024+" onclick="setAnalysisYear('2024+')">2024 → Now</button>
+    </div>
     <div class="charts-grid">
       <div class="chart-card" style="grid-column:1/-1">
         <div class="chart-title">Monthly Spending Trend</div>
@@ -998,7 +1006,8 @@ let STATE = {
   months: {},     // {'YYYY-MM': {started, startDate, label, specificBudgets}}
   loaded: false,
   expPage: 0,         // current expenses page (0-indexed)
-  summaryPage: 0      // current monthly summary page (0-indexed)
+  summaryPage: 0,     // current monthly summary page (0-indexed)
+  analysisYear: '2024+' // filter for Analysis tab
 };
 const EXP_PAGE_SIZE     = 15;
 const SUMMARY_PAGE_SIZE = 12;
@@ -1024,6 +1033,15 @@ function dateToMonthKey(dateStr) {
 }
 
 /* ── Build historical data from STATE ── */
+function setAnalysisYear(yr) {
+  STATE.analysisYear = yr;
+  STATE.summaryPage  = 0;
+  document.querySelectorAll('[id^="yr-btn-"]').forEach(b => b.classList.remove('active'));
+  const btn = document.getElementById(`yr-btn-${yr}`);
+  if (btn) btn.classList.add('active');
+  renderAnalysis();
+}
+
 function buildHistoricalData() {
   // Collect all known month keys from both months config and expenses
   const monthKeys = new Set();
@@ -1034,7 +1052,16 @@ function buildHistoricalData() {
   });
   const activeKey = getActiveKey();
 
-  return Array.from(monthKeys).sort().map(key => {
+  // Apply year filter
+  const yr = STATE.analysisYear || 'all';
+  const filtered = Array.from(monthKeys).filter(k => {
+    const y = k.slice(0, 4);
+    if (yr === 'all')   return true;
+    if (yr === '2024+') return y >= '2024';
+    return y === yr;
+  });
+
+  return filtered.sort().map(key => {
     const config   = STATE.months[key] || {};
     const isActive = key === activeKey;
     const exps     = STATE.expenses.filter(e => (e.month_key || dateToMonthKey(e.date)) === key);
@@ -1754,6 +1781,10 @@ function renderMonthPlanning() {
 let chartInstances = {};
 
 function renderAnalysis() {
+  // Sync active year-filter button
+  document.querySelectorAll('[id^="yr-btn-"]').forEach(b => b.classList.remove('active'));
+  const activeBtn = document.getElementById(`yr-btn-${STATE.analysisYear}`);
+  if (activeBtn) activeBtn.classList.add('active');
   buildSummaryTable();
   buildInsights();
   buildCharts();

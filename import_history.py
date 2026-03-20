@@ -182,7 +182,8 @@ def get_income_data(sheet):
                     rate_col = None
                     for priority_col in ["black market multiplier",
                                          "mutiplier", "multiplier",
-                                         "bank rate", "conversion rate", "normal value"]:
+                                         "bank rate", "conversion rate",
+                                         "normal value", "normal"]:
                         if priority_col in header:
                             rate_col = header.index(priority_col)
                             break

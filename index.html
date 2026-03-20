@@ -597,6 +597,7 @@ tr:hover td { background: rgba(255,255,255,0.02); }
         <tbody id="analysis-tbody"></tbody>
       </table>
     </div>
+    <div id="analysis-pagination" class="exp-pagination" style="display:none"></div>
     <div class="section-title" style="margin:24px 0 14px;">Insights</div>
     <div class="insights-grid" id="insights-grid"></div>
 
@@ -996,9 +997,11 @@ let STATE = {
   base: {},       // {category: amount}
   months: {},     // {'YYYY-MM': {started, startDate, label, specificBudgets}}
   loaded: false,
-  expPage: 0      // current expenses page (0-indexed)
+  expPage: 0,         // current expenses page (0-indexed)
+  summaryPage: 0      // current monthly summary page (0-indexed)
 };
-const EXP_PAGE_SIZE = 15;
+const EXP_PAGE_SIZE     = 15;
+const SUMMARY_PAGE_SIZE = 12;
 
 /* ── Default Base Budgets ── */
 const DEFAULT_BASE = {
@@ -2022,11 +2025,20 @@ function renderMonthDive(key) {
   }, 80);
 }
 
-function buildSummaryTable() {
-  const tbody = document.getElementById('analysis-tbody');
+function buildSummaryTable(resetPage) {
+  const tbody  = document.getElementById('analysis-tbody');
+  const pagDiv = document.getElementById('analysis-pagination');
   if (!tbody) return;
+  if (resetPage) STATE.summaryPage = 0;
+
   const hist = buildHistoricalData();
-  tbody.innerHTML = hist.map(r => {
+  const totalPages = Math.ceil(hist.length / SUMMARY_PAGE_SIZE);
+  if (STATE.summaryPage >= totalPages) STATE.summaryPage = Math.max(0, totalPages - 1);
+  const page  = STATE.summaryPage;
+  const start = page * SUMMARY_PAGE_SIZE;
+  const paged = hist.slice(start, start + SUMMARY_PAGE_SIZE);
+
+  const rowHtml = r => {
     const savePct = r.income>0&&r.savings!==null?(r.savings/r.income*100):0;
     const salaryDisplay = r.incomeUsd
       ? `$${r.incomeUsd.toLocaleString()}<br><span style="font-size:0.75rem;color:var(--muted)">${r.income.toLocaleString('en-EG')} EGP</span>`
@@ -2044,7 +2056,35 @@ function buildSummaryTable() {
       <td style="color:${savePct>=15?'var(--green)':'var(--amber)'}">${r.savings!==null&&r.income>0?savePct.toFixed(1)+'%':'—'}</td>
       <td style="color:var(--muted);font-size:0.8rem">${r.note||''}</td>
     </tr>`;
-  }).join('');
+  };
+  tbody.innerHTML = paged.map(rowHtml).join('');
+
+  // Pagination bar
+  if (pagDiv) {
+    if (totalPages <= 1) {
+      pagDiv.style.display = 'none';
+    } else {
+      pagDiv.style.display = 'flex';
+      const from = start + 1;
+      const to   = Math.min(start + SUMMARY_PAGE_SIZE, hist.length);
+      const range = (a, b) => Array.from({length: b-a+1}, (_, i) => a+i);
+      let pages = totalPages <= 7 ? range(0, totalPages-1)
+        : [...new Set([0, ...range(Math.max(1,page-1), Math.min(totalPages-2,page+1)), totalPages-1])];
+      let pageNums = '', prev = -1;
+      for (const p of pages) {
+        if (prev !== -1 && p - prev > 1) pageNums += `<span style="color:var(--muted);padding:0 2px">…</span>`;
+        pageNums += `<button class="page-btn${p===page?' active':''}" onclick="STATE.summaryPage=${p};buildSummaryTable()">${p+1}</button>`;
+        prev = p;
+      }
+      pagDiv.innerHTML = `
+        <span class="exp-pagination-info">${from}–${to} of ${hist.length} months</span>
+        <div class="exp-pagination-btns">
+          <button class="page-btn" onclick="STATE.summaryPage=${page-1};buildSummaryTable()" ${page===0?'disabled':''}>← Prev</button>
+          <div class="page-numbers">${pageNums}</div>
+          <button class="page-btn" onclick="STATE.summaryPage=${page+1};buildSummaryTable()" ${page===totalPages-1?'disabled':''}>Next →</button>
+        </div>`;
+    }
+  }
 }
 
 function buildInsights() {

@@ -2146,7 +2146,7 @@ function buildInsights() {
 function buildCharts() {
   Object.values(chartInstances).forEach(c=>c.destroy());
   chartInstances = {};
-  const hist      = buildHistoricalData();
+  const hist      = buildHistoricalData().slice().reverse(); // charts: oldest → newest (left → right)
   const labels    = hist.map(r=>r.label.replace(/\s(20\d{2})$/,(m,y)=>y===new Date().getFullYear().toString()?'':' '+y));
   const spendData = hist.map(r=>r.spending);
   const incomeData= hist.map(r=>r.income);

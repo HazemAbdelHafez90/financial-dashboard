@@ -1368,7 +1368,7 @@ function renderHome() {
             <button onclick="openIncomeModal('${activeKey}')" style="background:none;border:none;color:var(--blue);font-size:0.7rem;cursor:pointer;padding:0 0 0 4px;font-weight:600">${income>0?'✏️':'+ Set'}</button>
           </div>
           <div class="stat-block-val green">${incomeUsd ? '$'+Math.round(incomeUsd).toLocaleString() : income>0?fmtShort(income)+' EGP':'<span style="font-size:0.95rem;color:var(--muted)">Not set</span>'}</div>
-          ${incomeRate?`<div class="stat-block-sub">1 USD = ${incomeRate.toFixed(2)} EGP</div>`:`<div class="stat-block-sub">${income>0?income.toLocaleString('en-EG')+' EGP':'Set salary to track'}</div>`}
+          ${incomeRate?`<div class="stat-block-sub private-val">1 USD = ${incomeRate.toFixed(2)} EGP</div>`:`<div class="stat-block-sub">${income>0?income.toLocaleString('en-EG')+' EGP':'Set salary to track'}</div>`}
         </div>
         <!-- Budget Spending -->
         ${(()=>{
@@ -1379,23 +1379,23 @@ function renderHome() {
           const remainingUsd= incomeRate ? Math.abs(Math.round(remainingAmt/incomeRate)) : null;
           return `
           <div class="stat-block">
-            <div class="stat-block-label">📋 Budget Spending${unplanned>0?` <span style="color:var(--red)">+unplanned</span>`:''}</div>
+            <div class="stat-block-label">📋 Budget Spending${unplanned>0?` <span class="private-val" style="color:var(--red)">+${fmtShort(unplanned)}</span>`:''}</div>
             <div style="display:flex;align-items:baseline;gap:6px;margin-bottom:4px">
               <span class="stat-block-val ${isOver?'red':'amber'}">${spentUsd!==null?'$'+spentUsd.toLocaleString():fmtShort(totalSpent)}</span>
-              <span style="font-size:0.78rem;color:var(--muted)">${budgetUsd!==null?'of $'+budgetUsd.toLocaleString():'of '+fmtShort(totalBudget)}</span>
+              <span class="private-val" style="font-size:0.78rem;color:var(--muted)">${budgetUsd!==null?'of $'+budgetUsd.toLocaleString():'of '+fmtShort(totalBudget)}</span>
             </div>
             <div class="stat-block-sub">${totalSpent.toLocaleString('en-EG')} EGP spent</div>
             <div style="margin-top:8px;font-size:0.72rem">
               ${isOver
-                ? `<span style="color:var(--red);font-weight:600">▲ ${remainingUsd?'$'+remainingUsd.toLocaleString():fmtShort(Math.abs(remainingAmt))} over budget</span>`
-                : `<span style="color:var(--muted)">${remainingUsd?'<strong style="color:var(--green)">$'+remainingUsd.toLocaleString()+'</strong>':'<strong style="color:var(--green)">'+fmtShort(remainingAmt)+'</strong>'} remaining</span>`}
-              ${unplanned>0?`<span style="color:var(--muted)"> · ${fmtShort(unplanned)} unplanned</span>`:''}
+                ? `<span class="private-val" style="color:var(--red);font-weight:600">▲ ${remainingUsd?'$'+remainingUsd.toLocaleString():fmtShort(Math.abs(remainingAmt))} over budget</span>`
+                : `<span class="private-val" style="color:var(--muted)">${remainingUsd?'<strong style="color:var(--green)">$'+remainingUsd.toLocaleString()+'</strong>':'<strong style="color:var(--green)">'+fmtShort(remainingAmt)+'</strong>'} remaining</span>`}
+              ${unplanned>0?`<span class="private-val" style="color:var(--muted)"> · ${fmtShort(unplanned)} unplanned</span>`:''}
             </div>
           </div>`;
         })()}
         <!-- Savings -->
         <div class="stat-block" style="background:rgba(${savings!==null&&savings>=0?'34,197,94':'239,68,68'},0.06)">
-          <div class="stat-block-label">🎯 Savings${savings!==null&&income>0?` · <span style="font-weight:400">${(savings/income*100).toFixed(0)}% rate</span>`:''}</div>
+          <div class="stat-block-label">🎯 Savings${savings!==null&&income>0?` · <span class="private-val" style="font-weight:400">${(savings/income*100).toFixed(0)}% rate</span>`:''}</div>
           <div class="stat-block-val ${savings!==null?(savings>=0?'green':'red'):''}">
             ${savingsUsd!==null ? (savings<0?'-':'')+'$'+Math.abs(Math.round(savingsUsd)).toLocaleString() : savings!==null?(savings<0?'-':'')+fmtShort(Math.abs(savings))+' EGP':'—'}
           </div>

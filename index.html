@@ -1061,7 +1061,7 @@ function buildHistoricalData() {
     return y === yr;
   });
 
-  return filtered.sort().map(key => {
+  return filtered.sort((a,b) => b.localeCompare(a)).map(key => {
     const config   = STATE.months[key] || {};
     const isActive = key === activeKey;
     const exps     = STATE.expenses.filter(e => (e.month_key || dateToMonthKey(e.date)) === key);

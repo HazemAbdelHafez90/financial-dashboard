@@ -347,6 +347,20 @@ tr:hover td { background: rgba(255,255,255,0.02); }
 .spec-del { width: 22px; height: 22px; border-radius: 4px; background: transparent; border: none; color: var(--muted); cursor: pointer; font-size: 0.8rem; display: flex; align-items: center; justify-content: center; transition: all 0.2s; }
 .spec-del:hover { background: var(--red-dim); color: var(--red); }
 
+/* ── MONTH DEEP DIVE ── */
+.dive-card { background:rgba(255,255,255,0.03);border:1px solid var(--border2);border-radius:var(--radius-md);overflow:hidden; }
+.dive-header { padding:20px 22px;border-bottom:1px solid var(--border2);background:rgba(255,255,255,0.02) }
+.dive-kpi-row { display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:10px;padding:16px 22px;border-bottom:1px solid var(--border2); }
+.dive-kpi { background:var(--bg3);border-radius:8px;padding:12px 14px; }
+.dive-kpi-label { font-size:0.65rem;font-weight:600;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);margin-bottom:4px; }
+.dive-kpi-val { font-family:'Poppins',sans-serif;font-size:1.1rem;font-weight:700; }
+.dive-body { padding:18px 22px; }
+.dive-cat-row { display:flex;align-items:center;gap:10px;margin-bottom:10px; }
+.dive-cat-label { font-size:0.78rem;font-weight:600;min-width:110px;max-width:110px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis; }
+.dive-cat-bar-track { flex:1;height:7px;background:rgba(255,255,255,0.07);border-radius:4px;overflow:hidden; }
+.dive-cat-bar-fill { height:100%;border-radius:4px;transition:width .7s cubic-bezier(.4,0,.2,1); }
+.dive-cat-amt { font-size:0.75rem;font-weight:600;color:var(--muted);min-width:55px;text-align:right; }
+
 /* ── WEALTH TAB ── */
 .wealth-section { margin-bottom: 28px; }
 .wealth-section-header { display:flex; align-items:center; justify-content:space-between; margin-bottom:14px; flex-wrap:wrap; gap:8px; }
@@ -576,6 +590,20 @@ tr:hover td { background: rgba(255,255,255,0.02); }
     </div>
     <div class="section-title" style="margin:24px 0 14px;">Insights</div>
     <div class="insights-grid" id="insights-grid"></div>
+
+    <!-- Month Deep Dive -->
+    <div id="month-dive-section" style="margin-top:28px">
+      <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:14px">
+        <div class="section-title" style="margin:0">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="flex-shrink:0"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+          Month Overview
+        </div>
+        <select id="dive-month-select" onchange="renderMonthDive(this.value)" style="background:var(--bg3);border:1px solid var(--border);border-radius:8px;color:var(--text);padding:7px 12px;font-size:0.82rem;cursor:pointer;min-width:160px">
+          <option value="">— Select a month —</option>
+        </select>
+      </div>
+      <div id="month-dive-content"></div>
+    </div>
 
     <!-- Archived Months -->
     <div id="archived-section" style="display:none">
@@ -1882,6 +1910,163 @@ function renderArchivedMonths() {
   setTimeout(() => {
     document.querySelectorAll('[class^="arch-bar-"]').forEach(el => {
       el.style.width = el.getAttribute('data-w') + '%';
+    });
+  }, 80);
+
+  // Populate month dropdown
+  const sel = document.getElementById('dive-month-select');
+  if (sel) {
+    const prev = sel.value;
+    const allKeys = Object.entries(STATE.months)
+      .sort(([a],[b]) => b.localeCompare(a));
+    sel.innerHTML = `<option value="">— Select a month —</option>` +
+      allKeys.map(([k,c]) => `<option value="${k}"${k===prev?' selected':''}>${c.label||monthLabel(k)}${c.started?' (Active)':''}</option>`).join('');
+    if (prev) renderMonthDive(prev);
+  }
+}
+
+function renderMonthDive(key) {
+  const content = document.getElementById('month-dive-content');
+  if (!content) return;
+  if (!key) { content.innerHTML = ''; return; }
+
+  const config  = STATE.months[key];
+  if (!config)  { content.innerHTML = ''; return; }
+
+  const expenses   = STATE.expenses.filter(e => (e.month_key||dateToMonthKey(e.date)) === key);
+  const totalSpent = expenses.reduce((s,e)=>s+e.amount, 0);
+  const planned    = expenses.filter(e=>e.type!=='Unplanned').reduce((s,e)=>s+e.amount,0);
+  const unplanned  = expenses.filter(e=>e.type==='Unplanned').reduce((s,e)=>s+e.amount,0);
+  const base       = STATE.base;
+  const budget     = Object.values(base).reduce((s,v)=>s+v,0) + (config.specificBudgets||[]).reduce((s,b)=>s+b.amount,0);
+  const income     = config.income || 0;
+  const meta       = getIncomeMeta(key);
+  const savings    = income > 0 ? income - budget - unplanned : null;
+  const savePct    = income > 0 ? (savings/income*100).toFixed(1) : null;
+  const budgetPct  = budget > 0 ? Math.min((totalSpent/budget)*100,100).toFixed(1) : 0;
+  const rate       = meta?.rate || null;
+
+  // Category breakdown
+  const byCat = {};
+  expenses.forEach(e => { byCat[e.category] = (byCat[e.category]||0) + e.amount; });
+  const catEntries = Object.entries(byCat).sort((a,b)=>b[1]-a[1]);
+  const maxCat     = catEntries[0]?.[1] || 1;
+
+  // Top expense
+  const topExp = [...expenses].sort((a,b)=>b.amount-a.amount)[0];
+
+  const catColors = ['#f59e0b','#22c55e','#3b82f6','#a78bfa','#f43f5e','#06b6d4','#fb923c','#84cc16','#e879f9','#94a3b8'];
+
+  content.innerHTML = `
+  <div class="dive-card">
+    <!-- Header -->
+    <div class="dive-header">
+      <div style="display:flex;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;gap:12px">
+        <div>
+          <div style="font-family:'Poppins',sans-serif;font-size:1.2rem;font-weight:700">${config.label||monthLabel(key)}</div>
+          <div style="font-size:0.72rem;color:var(--muted);margin-top:2px">${config.startDate?'Started '+fmtDate(config.startDate):''} · ${expenses.length} expenses</div>
+        </div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          ${savings!==null?`
+          <div style="text-align:right">
+            <div style="font-size:0.68rem;color:var(--muted);text-transform:uppercase;font-weight:600">Savings</div>
+            <div style="font-family:'Poppins',sans-serif;font-size:1.1rem;font-weight:700;color:${savings>=0?'var(--green)':'var(--red)'}">
+              ${meta?.rate?`$${Math.abs(Math.round(savings/meta.rate)).toLocaleString()}`:fmtShort(Math.abs(savings))+' EGP'}
+            </div>
+            <div style="font-size:0.7rem;color:var(--muted)">${savePct}% save rate</div>
+          </div>`:''}
+          <button onclick="openMonthDetail('${key}')" style="background:var(--amber);color:#0f172a;border:none;border-radius:8px;padding:8px 14px;font-size:0.78rem;font-weight:700;cursor:pointer">
+            View Expenses →
+          </button>
+        </div>
+      </div>
+
+      <!-- Budget usage bar -->
+      <div style="margin-top:14px">
+        <div style="display:flex;justify-content:space-between;font-size:0.68rem;color:var(--muted);margin-bottom:5px">
+          <span>Budget usage</span>
+          <span style="color:${parseFloat(budgetPct)>=100?'var(--red)':parseFloat(budgetPct)>=80?'var(--amber)':'var(--green)'};font-weight:700">${budgetPct}%</span>
+        </div>
+        <div style="height:8px;background:rgba(255,255,255,0.07);border-radius:4px;overflow:hidden">
+          <div id="dive-bar-main" style="height:100%;width:0%;border-radius:4px;background:${parseFloat(budgetPct)>=100?'var(--red)':parseFloat(budgetPct)>=80?'var(--amber)':'var(--green)'};transition:width .7s ease"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- KPIs -->
+    <div class="dive-kpi-row">
+      <div class="dive-kpi">
+        <div class="dive-kpi-label">Income</div>
+        <div class="dive-kpi-val private-val" style="color:var(--green)">${meta?.usd?'$'+Math.round(meta.usd).toLocaleString():income>0?fmtShort(income)+' EGP':'—'}</div>
+        ${meta?.usd?`<div style="font-size:0.68rem;color:var(--muted)">${income.toLocaleString('en-EG')} EGP</div>`:''}
+      </div>
+      <div class="dive-kpi">
+        <div class="dive-kpi-label">Total Spent</div>
+        <div class="dive-kpi-val private-val" style="color:var(--amber)">${rate?'$'+Math.round(totalSpent/rate).toLocaleString():fmtShort(totalSpent)}</div>
+        ${rate?`<div style="font-size:0.68rem;color:var(--muted)">${totalSpent.toLocaleString('en-EG')} EGP</div>`:''}
+      </div>
+      <div class="dive-kpi">
+        <div class="dive-kpi-label">Budget</div>
+        <div class="dive-kpi-val private-val">${rate?'$'+Math.round(budget/rate).toLocaleString():fmtShort(budget)}</div>
+        ${rate?`<div style="font-size:0.68rem;color:var(--muted)">${budget.toLocaleString('en-EG')} EGP</div>`:''}
+      </div>
+      <div class="dive-kpi">
+        <div class="dive-kpi-label">Planned</div>
+        <div class="dive-kpi-val private-val" style="color:var(--green)">${fmtShort(planned)}</div>
+        <div style="font-size:0.68rem;color:var(--muted)">${expenses.length-expenses.filter(e=>e.type==='Unplanned').length} items</div>
+      </div>
+      <div class="dive-kpi">
+        <div class="dive-kpi-label">Unplanned</div>
+        <div class="dive-kpi-val private-val" style="color:${unplanned>0?'var(--red)':'var(--muted)'}">${unplanned>0?fmtShort(unplanned):'—'}</div>
+        <div style="font-size:0.68rem;color:var(--muted)">${expenses.filter(e=>e.type==='Unplanned').length} items</div>
+      </div>
+      <div class="dive-kpi">
+        <div class="dive-kpi-label">Top Expense</div>
+        <div class="dive-kpi-val private-val" style="font-size:0.88rem">${topExp?fmtShort(topExp.amount):'—'}</div>
+        <div style="font-size:0.68rem;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${topExp?topExp.description||topExp.category:'—'}</div>
+      </div>
+    </div>
+
+    <!-- Category Breakdown -->
+    <div class="dive-body">
+      <div style="font-size:0.72rem;font-weight:600;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);margin-bottom:14px">Spending by Category</div>
+      ${catEntries.length ? catEntries.map(([cat,amt],i) => {
+        const pct = (amt/maxCat*100).toFixed(1);
+        const budgetAmt = base[cat] || (config.specificBudgets||[]).find(b=>b.name===cat)?.amount || 0;
+        const color = catColors[i % catColors.length];
+        return `
+        <div class="dive-cat-row">
+          <div class="dive-cat-label" title="${cat}">${cat}</div>
+          <div class="dive-cat-bar-track">
+            <div class="dive-cat-bar-fill" data-dive-w="${pct}" style="width:0%;background:${color}${budgetAmt&&amt>budgetAmt?';background:#ef4444':''}"></div>
+          </div>
+          <div class="dive-cat-amt private-val">${fmtShort(amt)}</div>
+          ${budgetAmt?`<div style="font-size:0.68rem;color:var(--muted);min-width:45px;text-align:right">/${fmtShort(budgetAmt)}</div>`:'<div style="min-width:45px"></div>'}
+        </div>`;
+      }).join('') : `<div style="color:var(--muted);font-size:0.85rem">No expenses this month.</div>`}
+
+      <!-- Planned vs Unplanned mini chart -->
+      ${totalSpent > 0 ? `
+      <div style="margin-top:20px;border-top:1px solid var(--border2);padding-top:16px">
+        <div style="font-size:0.72rem;font-weight:600;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);margin-bottom:10px">Planned vs Unplanned</div>
+        <div style="height:10px;border-radius:5px;overflow:hidden;display:flex;gap:2px;margin-bottom:8px">
+          <div style="width:${(planned/totalSpent*100).toFixed(1)}%;background:var(--green);border-radius:5px 0 0 5px;transition:width .7s ease"></div>
+          <div style="width:${(unplanned/totalSpent*100).toFixed(1)}%;background:var(--red);border-radius:0 5px 5px 0"></div>
+        </div>
+        <div style="display:flex;gap:16px;font-size:0.72rem">
+          <span style="display:flex;align-items:center;gap:5px"><span style="width:8px;height:8px;border-radius:50%;background:var(--green);display:inline-block"></span> Planned <strong class="private-val">${fmtShort(planned)}</strong> (${(planned/totalSpent*100).toFixed(0)}%)</span>
+          <span style="display:flex;align-items:center;gap:5px"><span style="width:8px;height:8px;border-radius:50%;background:var(--red);display:inline-block"></span> Unplanned <strong class="private-val">${fmtShort(unplanned)}</strong> (${(unplanned/totalSpent*100).toFixed(0)}%)</span>
+        </div>
+      </div>` : ''}
+    </div>
+  </div>`;
+
+  // Animate bars
+  setTimeout(() => {
+    const main = document.getElementById('dive-bar-main');
+    if (main) main.style.width = Math.min(parseFloat(budgetPct),100) + '%';
+    document.querySelectorAll('.dive-cat-bar-fill[data-dive-w]').forEach(el => {
+      el.style.width = el.getAttribute('data-dive-w') + '%';
     });
   }, 80);
 }

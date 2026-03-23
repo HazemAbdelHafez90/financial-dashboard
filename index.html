@@ -2,10 +2,17 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>Hazem — Financial Dashboard</title>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+<title>Hazem Finance</title>
+
+<!-- PWA / iOS home screen -->
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+<meta name="apple-mobile-web-app-title" content="Hazem Finance" />
+<meta name="mobile-web-app-capable" content="yes" />
+<meta name="theme-color" content="#0f172a" />
+
+<!-- Preconnect for faster font load -->
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Poppins:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <style>
@@ -47,15 +54,55 @@ body { min-height: 100vh; }
 /* ── Loading Overlay ── */
 #db-loader {
   position: fixed; inset: 0; z-index: 9999;
-  background: var(--bg);
-  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 16px;
+  background: #0f172a;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  transition: opacity 0.4s ease;
 }
-#db-loader.hidden { display: none; }
-.spinner {
-  width: 40px; height: 40px; border-radius: 50%;
-  border: 3px solid var(--border);
-  border-top-color: var(--amber);
-  animation: spin 0.8s linear infinite;
+#db-loader.hidden { opacity: 0; pointer-events: none; }
+/* Logo mark */
+.splash-logo {
+  width: 72px; height: 72px; border-radius: 20px;
+  background: linear-gradient(135deg, rgba(251,191,36,0.15), rgba(34,197,94,0.1));
+  border: 1.5px solid rgba(251,191,36,0.3);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 2rem;
+  margin-bottom: 20px;
+  animation: splash-pop 0.5s cubic-bezier(0.34,1.56,0.64,1) both;
+}
+.splash-title {
+  font-family: 'Poppins', sans-serif;
+  font-size: 1.6rem; font-weight: 700;
+  color: #f8fafc; letter-spacing: -0.02em;
+  animation: splash-fade-up 0.5s 0.1s ease both;
+}
+.splash-title span { color: #fbbf24; }
+.splash-sub {
+  font-size: 0.78rem; color: #64748b; margin-top: 4px;
+  animation: splash-fade-up 0.5s 0.2s ease both;
+}
+/* Animated progress bar */
+.splash-bar-wrap {
+  width: 140px; height: 2px; background: rgba(255,255,255,0.07);
+  border-radius: 2px; margin-top: 36px; overflow: hidden;
+  animation: splash-fade-up 0.4s 0.3s ease both;
+}
+.splash-bar {
+  height: 100%; width: 30%;
+  background: linear-gradient(90deg, #fbbf24, #f59e0b);
+  border-radius: 2px;
+  animation: splash-sweep 1.4s 0.3s ease-in-out infinite;
+}
+@keyframes splash-pop {
+  from { transform: scale(0.6); opacity: 0; }
+  to   { transform: scale(1);   opacity: 1; }
+}
+@keyframes splash-fade-up {
+  from { transform: translateY(10px); opacity: 0; }
+  to   { transform: translateY(0);    opacity: 1; }
+}
+@keyframes splash-sweep {
+  0%   { transform: translateX(-200%); }
+  100% { transform: translateX(500%);  }
 }
 @keyframes spin { to { transform: rotate(360deg); } }
 .loader-text { font-size: 0.9rem; color: var(--muted); }
@@ -505,12 +552,16 @@ tr:hover td { background: rgba(255,255,255,0.02); }
 }
 </style>
 </head>
-<body>
+<body style="background:#0f172a">
 
-<!-- Loading overlay -->
+<!-- Splash / Loading overlay -->
 <div id="db-loader">
-  <div class="spinner"></div>
-  <div class="loader-text">Connecting to database…</div>
+  <div class="splash-logo">💰</div>
+  <div class="splash-title">Hazem <span>Finance</span></div>
+  <div class="splash-sub">Personal Dashboard</div>
+  <div class="splash-bar-wrap">
+    <div class="splash-bar"></div>
+  </div>
 </div>
 
 <div class="shell">
@@ -1035,6 +1086,10 @@ tr:hover td { background: rgba(255,255,255,0.02); }
     </div>
   </div>
 </div>
+
+<!-- External libs (placed here so body/splash renders first) -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 
 <!-- ============================================================ -->
 <script>
@@ -3319,7 +3374,14 @@ function togglePrivacy() {
 
 function showLoader(show) {
   const el = document.getElementById('db-loader');
-  if (el) el.classList.toggle('hidden', !show);
+  if (!el) return;
+  if (show) {
+    el.classList.remove('hidden');
+  } else {
+    el.classList.add('hidden');
+    // Remove from DOM after fade so it doesn't block taps
+    setTimeout(() => { if (el.classList.contains('hidden')) el.style.display = 'none'; }, 450);
+  }
 }
 function setDBStatus(online) {
   const dot  = document.getElementById('db-dot');

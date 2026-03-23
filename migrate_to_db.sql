@@ -44,3 +44,19 @@ ALTER TABLE wealth_receivables ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "open" ON wealth_cash FOR ALL USING (true) WITH CHECK (true);
 CREATE POLICY "open" ON wealth_assets FOR ALL USING (true) WITH CHECK (true);
 CREATE POLICY "open" ON wealth_receivables FOR ALL USING (true) WITH CHECK (true);
+
+-- Wealth snapshots (monthly net worth history)
+CREATE TABLE IF NOT EXISTS wealth_snapshots (
+  month_key    TEXT PRIMARY KEY,
+  net_egp      FLOAT NOT NULL DEFAULT 0,
+  net_usd      FLOAT,
+  cash_egp     FLOAT DEFAULT 0,
+  assets_egp   FLOAT DEFAULT 0,
+  recv_egp     FLOAT DEFAULT 0,
+  rates        JSONB DEFAULT '{}',      -- {"USD": 52.39, "CHF": 58.2}
+  asset_prices JSONB DEFAULT '{}',      -- {"Gold 21K": 4025}
+  notes        TEXT,
+  created_at   TIMESTAMPTZ DEFAULT NOW()
+);
+ALTER TABLE wealth_snapshots ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "public_all" ON wealth_snapshots FOR ALL USING (true) WITH CHECK (true);

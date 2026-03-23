@@ -1173,13 +1173,14 @@ async function migrateWealthFromLocalStorage() {
 async function initDB() {
   showLoader(true);
   try {
-    const [expRes, baseRes, monthRes, cashRes, assetRes, recvRes] = await Promise.all([
+    const [expRes, baseRes, monthRes, cashRes, assetRes, recvRes, snapRes] = await Promise.all([
       db.from('expenses').select('*').order('date', { ascending: false }).limit(9999),
       db.from('base_budgets').select('*'),
       db.from('month_configs').select('*'),
       db.from('wealth_cash').select('*'),
       db.from('wealth_assets').select('*'),
-      db.from('wealth_receivables').select('*')
+      db.from('wealth_receivables').select('*'),
+      db.from('wealth_snapshots').select('*').order('month_key', { ascending: true })
     ]);
 
     if (expRes.error) throw expRes.error;
@@ -1209,6 +1210,7 @@ async function initDB() {
     STATE.wealth.cash        = (cashRes.data  || []).map(r => ({ id:r.id, currency:r.currency, amount:Number(r.amount), rate:r.rate, notes:r.notes||'' }));
     STATE.wealth.assets      = (assetRes.data || []).map(r => ({ id:r.id, name:r.name, type:r.type, qty:Number(r.qty), price:Number(r.price), notes:r.notes||'' }));
     STATE.wealth.receivables = (recvRes.data  || []).map(r => ({ id:r.id, person:r.person, amount:Number(r.amount), currency:r.currency, notes:r.notes||'' }));
+    STATE.wealth.snapshots   = (snapRes.data  || []).map(r => ({ month_key:r.month_key, net_egp:Number(r.net_egp), net_usd:r.net_usd?Number(r.net_usd):null, cash_egp:Number(r.cash_egp||0), assets_egp:Number(r.assets_egp||0), recv_egp:Number(r.recv_egp||0), rates:r.rates||{}, asset_prices:r.asset_prices||{}, notes:r.notes||'' }));
 
     // One-time migration from localStorage → DB (for existing users)
     await migrateWealthFromLocalStorage();
@@ -2645,7 +2647,7 @@ async function deleteSpecialBudget(monthKey, specId) {
 /* ══════════════════════════════════════════
    WEALTH TAB
 ══════════════════════════════════════════ */
-STATE.wealth = { cash: [], assets: [], receivables: [] };
+STATE.wealth = { cash: [], assets: [], receivables: [], snapshots: [] };
 
 // Rate helpers
 function getRate(cur) {
@@ -2892,6 +2894,37 @@ async function deleteWealthRecv(id) {
   renderWealth();
 }
 
+// ── SNAPSHOT ──
+async function saveWealthSnapshot() {
+  const cashRows  = STATE.wealth.cash;
+  const assetRows = STATE.wealth.assets;
+  const recvRows  = STATE.wealth.receivables;
+  const cashEgp   = cashRows.reduce((s,c)=>s+(c.currency==='EGP'?c.amount:c.amount*(c.rate||0)),0);
+  const assetsEgp = assetRows.reduce((s,a)=>s+a.qty*a.price,0);
+  const recvEgp   = recvRows.reduce((s,r)=>s+(toEGP(r.amount,r.currency)||0),0);
+  const netEgp    = cashEgp + assetsEgp + recvEgp;
+  const usdRate   = parseFloat(localStorage.getItem('usd_egp_rate'))||null;
+  const netUsd    = usdRate ? netEgp/usdRate : null;
+
+  // Capture current rates for each currency held
+  const rates = {};
+  cashRows.forEach(c=>{ if(c.currency!=='EGP'&&c.rate) rates[c.currency]=c.rate; });
+  if(usdRate) rates['USD']=usdRate;
+
+  // Capture current price per unit for each asset by name
+  const assetPrices = {};
+  assetRows.forEach(a=>{ assetPrices[a.name]=a.price; });
+
+  const monthKey = getActiveKey() || new Date().toISOString().slice(0,7);
+  const row = { month_key:monthKey, net_egp:netEgp, net_usd:netUsd, cash_egp:cashEgp, assets_egp:assetsEgp, recv_egp:recvEgp, rates, asset_prices:assetPrices };
+  const { error } = await db.from('wealth_snapshots').upsert(row, { onConflict:'month_key' });
+  if (error) { showToast('Error: '+error.message,'error'); return; }
+  STATE.wealth.snapshots = [...STATE.wealth.snapshots.filter(s=>s.month_key!==monthKey), {...row}]
+    .sort((a,b)=>a.month_key.localeCompare(b.month_key));
+  showToast(`Snapshot saved for ${monthKey} ✅`);
+  renderWealth();
+}
+
 // ── MAIN RENDER ──
 function renderWealth() {
   const container = document.getElementById('wealth-content');
@@ -2945,27 +2978,88 @@ function renderWealth() {
   const assetPct = Math.round((assetTotalEgp / totalForBar) * 100);
   const recvPct  = Math.max(0, 100 - cashPct - assetPct);
 
+  // ── MoM change computation ──
+  const snaps = STATE.wealth.snapshots.slice().sort((a,b)=>a.month_key.localeCompare(b.month_key));
+  const prevSnap = snaps.length ? snaps[snaps.length-1] : null;
+  const totalDelta = prevSnap ? netEgp - prevSnap.net_egp : null;
+  const totalDeltaUsd = (prevSnap && netUsd && prevSnap.net_usd) ? netUsd - prevSnap.net_usd : null;
+
+  // Per-driver breakdown (rate/price changes × current holdings)
+  const drivers = [];
+  if (prevSnap) {
+    // Currency drivers
+    cashRows.forEach(c => {
+      if (c.currency === 'EGP') return;
+      const prevRate = prevSnap.rates?.[c.currency];
+      const currRate = c.rate || getRate(c.currency);
+      if (prevRate && currRate && c.amount) {
+        const impact = c.amount * (currRate - prevRate);
+        if (Math.abs(impact) > 1) drivers.push({ label: c.currency, impact, detail: `${c.amount.toLocaleString()} ${c.currency} × (${currRate.toFixed(2)} − ${prevRate.toFixed(2)})` });
+      }
+    });
+    // Asset price drivers
+    assetRows.forEach(a => {
+      const prevPrice = prevSnap.asset_prices?.[a.name];
+      if (prevPrice && a.price && a.qty) {
+        const impact = a.qty * (a.price - prevPrice);
+        if (Math.abs(impact) > 1) drivers.push({ label: a.name, impact, detail: `${a.qty} × (${a.price.toLocaleString()} − ${prevPrice.toLocaleString()}) EGP` });
+      }
+    });
+  }
+
+  const deltaColor = d => d > 0 ? 'var(--green)' : d < 0 ? 'var(--red)' : 'var(--muted)';
+  const deltaSign  = d => d > 0 ? '+' : '';
+
   container.innerHTML = `
   <!-- ① NET WORTH HERO — top of wealth tab -->
-  <div class="wealth-total-card" style="margin-bottom:24px;position:relative;overflow:hidden">
+  <div class="wealth-total-card" style="margin-bottom:16px;position:relative;overflow:hidden">
     <!-- Background glow -->
     <div style="position:absolute;top:-40px;right:-40px;width:180px;height:180px;border-radius:50%;background:radial-gradient(circle,rgba(34,197,94,0.12) 0%,transparent 70%);pointer-events:none"></div>
 
     <!-- Top row: title + rates + refresh -->
-    <div style="display:flex;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:18px">
+    <div style="display:flex;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:14px">
       <div>
         <div style="font-size:0.68rem;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin-bottom:2px">📊 Net Worth</div>
         <div class="wealth-total-main">${netUsd ? fmtUSD(netUsd,0) : fmtEGP(netEgp)}</div>
         ${netUsd ? `<div class="wealth-total-sub" style="margin-top:2px">${fmtEGP(netEgp)}</div>` : ''}
       </div>
       <div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px">
-        <button class="btn btn-ghost btn-sm" onclick="fetchWealthRates()">↻ Refresh Rates</button>
+        <div style="display:flex;gap:6px">
+          <button class="btn btn-ghost btn-sm" onclick="fetchWealthRates()">↻ Rates</button>
+          <button class="btn btn-ghost btn-sm" onclick="saveWealthSnapshot()" title="Save snapshot for this month" style="border-color:var(--amber);color:var(--amber)">📸 Snapshot</button>
+        </div>
         <div style="display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end">
           ${['USD','CHF','EUR','GBP'].map(c=>{const r=getRate(c);return r?`<div class="rate-badge"><span style="color:var(--muted);font-size:0.7rem">${c}</span> <strong>${r.toFixed(2)}</strong></div>`:''}).join('')}
         </div>
         ${usdRate?`<div style="font-size:0.65rem;color:var(--muted)">Updated ${rateDate}</div>`:''}
       </div>
     </div>
+
+    <!-- MoM change strip -->
+    ${totalDelta !== null ? `
+    <div style="background:rgba(255,255,255,0.04);border:1px solid var(--border2);border-radius:10px;padding:10px 14px;margin-bottom:14px">
+      <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px">
+        <div>
+          <div style="font-size:0.65rem;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin-bottom:3px">vs last snapshot · ${prevSnap.month_key}</div>
+          <div style="display:flex;align-items:baseline;gap:8px">
+            <span class="private-val" style="font-size:1.1rem;font-weight:700;color:${deltaColor(totalDelta)}">${deltaSign(totalDelta)}${fmtEGP(totalDelta)}</span>
+            ${totalDeltaUsd!==null?`<span class="private-val" style="font-size:0.78rem;color:${deltaColor(totalDeltaUsd)}">${deltaSign(totalDeltaUsd)}${fmtUSD(totalDeltaUsd,0)}</span>`:''}
+          </div>
+        </div>
+        <!-- Per-driver pills -->
+        <div style="display:flex;flex-wrap:wrap;gap:6px">
+          ${drivers.map(d=>`
+          <div title="${d.detail}" style="background:rgba(${d.impact>0?'34,197,94':'239,68,68'},.10);border:1px solid rgba(${d.impact>0?'34,197,94':'239,68,68'},.25);border-radius:20px;padding:3px 9px;font-size:0.7rem;cursor:default">
+            <span style="color:var(--muted)">${d.label}</span>
+            <span class="private-val" style="font-weight:700;color:${deltaColor(d.impact)};margin-left:4px">${deltaSign(d.impact)}${Math.abs(d.impact)>=1000?fmtEGP(d.impact):Math.round(d.impact).toLocaleString()+' EGP'}</span>
+          </div>`).join('')}
+          ${drivers.length===0?`<span style="font-size:0.7rem;color:var(--muted)">No rate/price changes detected</span>`:''}
+        </div>
+      </div>
+    </div>` : `
+    <div style="background:rgba(255,255,255,0.03);border:1px dashed var(--border2);border-radius:10px;padding:10px 14px;margin-bottom:14px;text-align:center;font-size:0.78rem;color:var(--muted)">
+      📸 Click <strong style="color:var(--amber)">Snapshot</strong> at end of each month to track wealth changes over time
+    </div>`}
 
     <!-- Allocation bar -->
     <div style="margin-bottom:14px">
@@ -2991,6 +3085,13 @@ function renderWealth() {
       </div>`).join('')}
     </div>
   </div>
+
+  <!-- ① b  NET WORTH TIMELINE CHART -->
+  ${snaps.length >= 2 ? `
+  <div style="background:rgba(255,255,255,0.03);border:1px solid var(--border2);border-radius:var(--radius-md);padding:20px;margin-bottom:24px">
+    <div style="font-size:0.78rem;font-weight:600;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin-bottom:14px">📈 Net Worth Over Time</div>
+    <div style="position:relative;height:200px"><canvas id="wealth-chart"></canvas></div>
+  </div>` : ''}
 
   <!-- ② Cash Holdings -->
   <div class="wealth-section" id="wealth-cash-section">
@@ -3095,6 +3196,73 @@ function renderWealth() {
       </table>
     </div>` : `<div style="color:var(--muted);font-size:0.85rem;padding:10px 0">No receivables yet. Track money you've lent to others.</div>`}
   </div>`;
+
+  // ── Render Net Worth Timeline Chart ──
+  if (snaps.length >= 2) {
+    requestAnimationFrame(() => {
+      const ctx = document.getElementById('wealth-chart');
+      if (!ctx) return;
+      if (chartInstances.wealth) { chartInstances.wealth.destroy(); chartInstances.wealth = null; }
+      const labelColor = '#94a3b8';
+      const gridColor  = 'rgba(148,163,184,0.1)';
+      const labels  = snaps.map(s => s.month_key.replace(/^(\d{4})-(\d{2})$/, (_, y, m) => {
+        return ['','Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][parseInt(m)] + ' ' + y.slice(2);
+      }));
+      const egpData = snaps.map(s => s.net_egp);
+      const usdData = snaps.some(s=>s.net_usd) ? snaps.map(s => s.net_usd||null) : null;
+      const datasets = [
+        {
+          label: 'Net Worth (EGP)',
+          data: egpData,
+          borderColor: 'rgba(34,197,94,0.9)',
+          backgroundColor: 'rgba(34,197,94,0.1)',
+          fill: true,
+          tension: 0.35,
+          pointRadius: 4,
+          pointHoverRadius: 6,
+          borderWidth: 2,
+          yAxisID: 'y'
+        }
+      ];
+      if (usdData) datasets.push({
+        label: 'Net Worth (USD)',
+        data: usdData,
+        borderColor: 'rgba(251,191,36,0.8)',
+        backgroundColor: 'transparent',
+        fill: false,
+        tension: 0.35,
+        pointRadius: 3,
+        pointHoverRadius: 5,
+        borderWidth: 1.5,
+        borderDash: [4,3],
+        yAxisID: 'y2'
+      });
+      chartInstances.wealth = new Chart(ctx, {
+        type: 'line',
+        data: { labels, datasets },
+        options: {
+          responsive: true, maintainAspectRatio: false,
+          interaction: { mode: 'index', intersect: false },
+          plugins: {
+            legend: { labels: { color: labelColor, font: { size: 11 } } },
+            tooltip: {
+              callbacks: {
+                label: ctx2 => {
+                  const v = ctx2.parsed.y;
+                  return ctx2.dataset.yAxisID==='y2' ? ` ${fmtUSD(v,0)}` : ` ${fmtEGP(v)}`;
+                }
+              }
+            }
+          },
+          scales: {
+            x: { ticks:{ color:labelColor, font:{size:10} }, grid:{ color:gridColor } },
+            y: { ticks:{ color:labelColor, font:{size:10}, callback: v => v>=1e6?Math.round(v/1000)+'K':Math.round(v/1000)+'K' }, grid:{ color:gridColor }, position:'left' },
+            ...(usdData ? { y2: { ticks:{ color:'rgba(251,191,36,0.7)', font:{size:10}, callback: v => '$'+Math.round(v/1000)+'K' }, grid:{ display:false }, position:'right' } } : {})
+          }
+        }
+      });
+    });
+  }
 }
 
 /* ══════════════════════════════════════════

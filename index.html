@@ -107,6 +107,129 @@ body { min-height: 100vh; }
 @keyframes spin { to { transform: rotate(360deg); } }
 .loader-text { font-size: 0.9rem; color: var(--muted); }
 
+/* ── Auth Gate ── */
+.auth-shell {
+  min-height: 100vh;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  padding: 28px 20px;
+  background:
+    radial-gradient(circle at top left, rgba(245,158,11,0.16), transparent 32%),
+    radial-gradient(circle at bottom right, rgba(59,130,246,0.12), transparent 28%),
+    linear-gradient(180deg, #0f172a 0%, #111827 100%);
+}
+.auth-shell.open { display: flex; }
+.auth-card {
+  width: 100%;
+  max-width: 430px;
+  background: rgba(15,23,42,0.92);
+  border: 1px solid var(--border);
+  border-radius: 22px;
+  box-shadow: var(--shadow-lg);
+  padding: 28px 26px;
+}
+.auth-eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 10px;
+  border-radius: 999px;
+  background: rgba(245,158,11,0.12);
+  color: var(--amber);
+  font-size: 0.74rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  margin-bottom: 16px;
+}
+.auth-title {
+  font-family: 'Poppins', sans-serif;
+  font-size: 1.7rem;
+  font-weight: 700;
+  margin-bottom: 8px;
+}
+.auth-sub {
+  color: var(--muted);
+  font-size: 0.9rem;
+  line-height: 1.6;
+  margin-bottom: 22px;
+}
+.auth-error {
+  display: none;
+  margin-bottom: 16px;
+  padding: 12px 14px;
+  border-radius: 12px;
+  background: var(--red-dim);
+  border: 1px solid rgba(239,68,68,0.26);
+  color: #fca5a5;
+  font-size: 0.82rem;
+}
+.auth-error.show { display: block; }
+.auth-meta {
+  margin-top: 16px;
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  align-items: center;
+  color: var(--muted);
+  font-size: 0.78rem;
+}
+.auth-link-btn {
+  background: none;
+  border: none;
+  color: var(--amber);
+  font: inherit;
+  cursor: pointer;
+  padding: 0;
+}
+.auth-link-btn:hover { text-decoration: underline; }
+.app-shell { display: none; }
+.app-shell.ready { display: block; }
+.user-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 12px;
+  border-radius: 999px;
+  background: rgba(255,255,255,0.04);
+  border: 1px solid var(--border2);
+  color: var(--text);
+  font-size: 0.76rem;
+  font-weight: 600;
+}
+.user-chip .role {
+  color: var(--amber);
+  font-size: 0.68rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+.setup-shell {
+  display: none;
+  min-height: calc(100vh - 120px);
+  align-items: center;
+  justify-content: center;
+}
+.setup-shell.open { display: flex; }
+.setup-card {
+  width: 100%;
+  max-width: 520px;
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 28px;
+}
+.access-note {
+  margin-top: 16px;
+  padding: 12px 14px;
+  border-radius: 12px;
+  background: rgba(59,130,246,0.12);
+  border: 1px solid rgba(59,130,246,0.24);
+  color: #bfdbfe;
+  font-size: 0.82rem;
+  line-height: 1.5;
+}
+
 /* ── DB Error Banner ── */
 #db-error {
   background: var(--red-dim); border: 1px solid rgba(239,68,68,0.3);
@@ -398,6 +521,68 @@ tr:hover td { background: rgba(255,255,255,0.02); }
 .empty-state { text-align: center; padding: 48px 24px; color: var(--muted); }
 .empty-state p { margin-top: 8px; font-size: 0.9rem; }
 
+.shortcut-card {
+  margin-bottom: 18px;
+  padding: 16px 18px;
+  background: linear-gradient(135deg, rgba(59,130,246,0.12), rgba(15,23,42,0.82));
+  border: 1px solid rgba(59,130,246,0.24);
+  border-radius: var(--radius-md);
+}
+.shortcut-card h3 {
+  font-family: 'Poppins', sans-serif;
+  font-size: 1rem;
+  margin-bottom: 6px;
+}
+.shortcut-card p {
+  color: var(--muted);
+  font-size: 0.82rem;
+  line-height: 1.55;
+  margin-bottom: 12px;
+}
+.shortcut-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 10px;
+  margin-bottom: 12px;
+}
+.shortcut-stat {
+  background: rgba(255,255,255,0.04);
+  border: 1px solid var(--border2);
+  border-radius: 12px;
+  padding: 10px 12px;
+}
+.shortcut-stat-label {
+  font-size: 0.68rem;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  margin-bottom: 4px;
+}
+.shortcut-stat-value {
+  font-size: 0.86rem;
+  font-weight: 600;
+  color: var(--text);
+  word-break: break-word;
+}
+.shortcut-code {
+  display: block;
+  width: 100%;
+  padding: 12px;
+  background: rgba(2,6,23,0.55);
+  border: 1px solid var(--border2);
+  border-radius: 12px;
+  color: #cbd5e1;
+  font-size: 0.76rem;
+  line-height: 1.5;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+.shortcut-note {
+  margin-top: 10px;
+  color: var(--muted);
+  font-size: 0.76rem;
+}
+
 /* ── BUDGETS TAB ── */
 .budgets-section { margin-bottom: 32px; }
 .base-table-wrap { border-radius: var(--radius-md); border: 1px solid var(--border); overflow: hidden; }
@@ -452,6 +637,128 @@ tr:hover td { background: rgba(255,255,255,0.02); }
 .rates-strip { display:flex; gap:10px; flex-wrap:wrap; margin-bottom:20px; }
 .rate-badge { background:var(--bg2); border:1px solid var(--border); border-radius:var(--radius-sm); padding:8px 14px; font-size:0.8rem; cursor:pointer; display:flex; align-items:center; gap:6px; }
 .rate-badge strong { color:var(--amber); }
+.rate-badge.editing {
+  background: rgba(245,158,11,0.08);
+  border-color: var(--amber);
+}
+.rate-inline-input {
+  width: 88px;
+  padding: 6px 8px;
+  border-radius: 8px;
+  border: 1px solid var(--border2);
+  background: rgba(255,255,255,0.04);
+  color: var(--text);
+  font-size: 0.8rem;
+}
+.wealth-launch-note {
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:12px;
+  flex-wrap:wrap;
+  margin-bottom:24px;
+  padding:14px 18px;
+  border-radius:14px;
+  border:1px solid var(--border2);
+  background:linear-gradient(135deg, rgba(255,255,255,0.04), rgba(255,255,255,0.02));
+}
+.wealth-detail-modal {
+  max-width: 920px;
+}
+.wealth-detail-head {
+  display:flex;
+  align-items:flex-start;
+  justify-content:space-between;
+  gap:16px;
+  flex-wrap:wrap;
+  margin-bottom:18px;
+}
+.wealth-detail-kpi {
+  display:grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap:12px;
+  margin-bottom:18px;
+}
+.wealth-detail-kpi-card {
+  background: rgba(255,255,255,0.04);
+  border: 1px solid var(--border2);
+  border-radius: 14px;
+  padding: 14px 16px;
+}
+.wealth-detail-kpi-card .label {
+  font-size: 0.68rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--muted);
+  margin-bottom: 6px;
+}
+.wealth-detail-kpi-card .value {
+  font-size: 1.15rem;
+  font-weight: 700;
+  font-family: 'Poppins', sans-serif;
+}
+.wealth-detail-list {
+  display:flex;
+  flex-direction:column;
+  gap:12px;
+}
+.wealth-detail-item {
+  padding:16px 18px;
+  border-radius:16px;
+  border:1px solid var(--border2);
+  background:linear-gradient(135deg, rgba(255,255,255,0.05), rgba(255,255,255,0.02));
+}
+.wealth-detail-item-top {
+  display:flex;
+  align-items:flex-start;
+  justify-content:space-between;
+  gap:14px;
+}
+.wealth-detail-item-title {
+  font-size:0.94rem;
+  font-weight:700;
+}
+.wealth-detail-item-sub {
+  margin-top:4px;
+  font-size:0.76rem;
+  color:var(--muted);
+  line-height:1.5;
+}
+.wealth-detail-item-metrics {
+  display:flex;
+  gap:8px;
+  flex-wrap:wrap;
+  margin-top:12px;
+}
+.wealth-pill {
+  padding:6px 10px;
+  border-radius:999px;
+  border:1px solid var(--border2);
+  background:rgba(255,255,255,0.04);
+  font-size:0.74rem;
+  color:var(--muted);
+}
+.wealth-pill strong {
+  color:var(--text);
+  margin-left:4px;
+}
+.wealth-item-actions {
+  display:flex;
+  gap:8px;
+  flex-shrink:0;
+}
+.wealth-inline-grid {
+  display:grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap:10px;
+  margin-top:12px;
+}
+.wealth-inline-actions {
+  display:flex;
+  gap:8px;
+  flex-wrap:wrap;
+  margin-top:14px;
+}
 /* ── ANALYSIS TAB ── */
 .year-filter-bar {
   display: flex; align-items: center; gap: 6px;
@@ -544,11 +851,93 @@ tr:hover td { background: rgba(255,255,255,0.02); }
   .db-status span { display: none; }
   .year-filter-bar { width: 100%; }
   .exp-stats { flex-wrap: wrap; }
+  .wealth-total-card { padding: 18px 16px; }
+  .wealth-breakdown { grid-template-columns: 1fr; gap: 10px; }
+  .wealth-detail-modal { max-width: 100%; }
+  .wealth-detail-item { padding: 14px; }
+  .wealth-detail-item-top { flex-direction: column; }
+  .wealth-item-actions { width: 100%; }
+  .wealth-item-actions .btn { flex: 1; justify-content: center; }
+  .rate-badge { padding: 8px 12px; font-size: 0.76rem; }
+  .rate-inline-input { width: 72px; }
+  .wealth-launch-note { padding: 12px 14px; }
+  .modal-overlay { padding: 12px; }
 }
 @media (max-width: 600px) {
-  .month-stats { grid-template-columns: 1fr; }
-  .stat-block-val { font-size: 1.5rem; }
-  .top-header { flex-wrap: wrap; gap: 10px; }
+  .shell { padding: 10px 10px 88px; }
+  .tabs { margin-bottom: 16px; padding: 4px; gap: 3px; }
+  .tab { font-size: 0.75rem; padding: 8px 12px; }
+  .month-stats { grid-template-columns: 1fr; gap: 10px; }
+  .stat-block { padding: 16px 14px; }
+  .stat-block-val { font-size: 1.35rem; }
+  .top-header { align-items: flex-start; gap: 10px; margin-bottom: 16px; }
+  .logo { font-size: 0.96rem; line-height: 1; max-width: 46vw; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .header-right { flex: 1; min-width: 0; justify-content: flex-end; gap: 6px; flex-wrap: wrap; }
+  .user-chip { max-width: 40vw; min-width: 0; padding: 6px 10px; font-size: 0.72rem; }
+  .user-chip #user-chip-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; display: inline-block; max-width: 100%; }
+  .privacy-btn { padding: 7px 10px; font-size: 0.74rem; }
+  .privacy-btn span { white-space: nowrap; }
+  .mobile-add-btn { padding: 8px 10px; font-size: 0.76rem; white-space: nowrap; gap: 6px; }
+  .mobile-add-btn svg { width: 12px; height: 12px; }
+  .db-status { min-width: 12px; }
+  .db-dot { width: 6px; height: 6px; }
+  .auth-shell { padding: 14px; }
+  .auth-card { padding: 20px 16px; border-radius: 18px; }
+  .auth-title { font-size: 1.25rem; }
+  .auth-sub { font-size: 0.82rem; margin-bottom: 16px; }
+  .setup-card { padding: 18px 16px; }
+  .month-header-card { padding: 18px 16px 20px; margin-bottom: 18px; }
+  .month-header-top { margin-bottom: 14px; }
+  .month-label { font-size: 1.12rem; }
+  .month-sub { font-size: 0.75rem; }
+  .month-actions { width: 100%; }
+  .month-actions .btn { flex: 1; justify-content: center; padding: 8px 10px; }
+  .wealth-total-main { font-size: 1.55rem; }
+  .wealth-total-sub { font-size: 0.78rem; }
+  .wealth-breakdown-item { padding: 12px; }
+  .wealth-breakdown-val { font-size: 0.92rem; }
+  .wealth-detail-kpi { grid-template-columns: 1fr; gap: 10px; }
+  .wealth-inline-grid { grid-template-columns: 1fr; }
+  .wealth-inline-actions .btn { flex: 1; justify-content: center; }
+  .rate-badge { width: calc(50% - 4px); justify-content: center; }
+  .rate-badge.editing { width: 100%; flex-wrap: wrap; justify-content: flex-start; }
+  .exp-stats { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .exp-stat { min-width: 0; padding: 12px 14px; }
+  .exp-stat-val { font-size: 0.98rem; }
+  .filter-row { gap: 10px; }
+  .search-wrap, .filter-select { width: 100%; min-width: 0; }
+  .table-wrap table { font-size: 0.78rem; }
+  .table-wrap th, .table-wrap td { padding-left: 10px; padding-right: 10px; }
+  .chart-card { padding: 16px; }
+  .modal { max-height: 94vh; border-radius: 16px; }
+  .modal-header { padding: 16px 16px 12px; }
+  .modal-body { padding: 16px; }
+  .modal-footer { padding: 12px 16px 16px; flex-wrap: wrap; }
+  .modal-footer .btn { flex: 1; justify-content: center; }
+}
+
+@media (max-width: 390px) {
+  .shell { padding: 8px 8px 84px; }
+  .top-header { margin-bottom: 14px; }
+  .tabs { margin-bottom: 14px; }
+  .tab { padding: 7px 9px; font-size: 0.7rem; }
+  .logo { max-width: 42vw; font-size: 0.9rem; }
+  .user-chip { max-width: 38vw; padding: 6px 8px; }
+  .mobile-add-btn { padding: 8px 9px; font-size: 0.72rem; }
+  .privacy-btn { padding: 7px 8px; }
+  .exp-stats { grid-template-columns: 1fr; }
+  .wealth-total-card { padding: 14px 12px; }
+  .wealth-breakdown-item { padding: 10px; }
+  .wealth-launch-note { padding: 10px 12px; }
+  .auth-card { padding: 18px 14px; }
+}
+
+@media (display-mode: standalone) and (max-width: 430px) {
+  body { overflow-x: hidden; }
+  .shell { padding-top: max(10px, env(safe-area-inset-top)); padding-left: 10px; padding-right: 10px; }
+  .auth-shell { padding-top: max(14px, env(safe-area-inset-top)); }
+  .top-header { position: sticky; top: 0; z-index: 20; background: rgba(15,23,42,0.96); backdrop-filter: blur(10px); padding: 6px 0 10px; }
+  .tabs { position: sticky; top: calc(env(safe-area-inset-top) + 54px); z-index: 18; backdrop-filter: blur(10px); }
 }
 </style>
 </head>
@@ -564,11 +953,37 @@ tr:hover td { background: rgba(255,255,255,0.02); }
   </div>
 </div>
 
-<div class="shell">
+<div class="auth-shell open" id="auth-shell">
+  <div class="auth-card">
+    <div class="auth-eyebrow">Secure Access</div>
+    <div class="auth-title" id="auth-title">Sign In</div>
+    <div class="auth-sub" id="auth-sub">Sign in with your email to load only the budgets and analysis you are allowed to access.</div>
+    <div class="auth-error" id="auth-error"></div>
+    <div class="form-group">
+      <label class="form-label">Email</label>
+      <input type="email" class="form-input" id="auth-email" placeholder="name@example.com" autocomplete="email">
+    </div>
+    <div class="form-group">
+      <label class="form-label">Password</label>
+      <input type="password" class="form-input" id="auth-password" placeholder="••••••••" autocomplete="current-password">
+    </div>
+    <button class="btn btn-primary" id="auth-submit-btn" style="width:100%;justify-content:center" onclick="submitAuthForm()">Sign In</button>
+    <div class="auth-meta">
+      <span id="auth-mode-copy">Need an account?</span>
+      <button class="auth-link-btn" id="auth-toggle-btn" onclick="toggleAuthMode()">Create one</button>
+    </div>
+  </div>
+</div>
+
+<div class="shell app-shell" id="app-shell">
   <!-- TOP HEADER -->
   <div class="top-header">
     <div class="logo">Hazem <span>Finance</span></div>
     <div class="header-right">
+      <div class="user-chip" id="user-chip" style="display:none">
+        <span id="user-chip-name">Signed in</span>
+        <span class="role" id="user-chip-role">member</span>
+      </div>
       <button class="privacy-btn" id="privacy-btn" onclick="togglePrivacy()" title="Hide/show numbers">
         <svg id="privacy-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
           <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/>
@@ -579,10 +994,11 @@ tr:hover td { background: rgba(255,255,255,0.02); }
         <div class="db-dot" id="db-dot"></div>
         <span id="db-status-text">Supabase</span>
       </div>
-      <button class="mobile-add-btn" onclick="openExpenseModal()">
+      <button class="mobile-add-btn" id="mobile-add-btn" onclick="openExpenseModal()">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M12 5v14M5 12h14"/></svg>
         Add Expense
       </button>
+      <button class="btn btn-ghost btn-sm" id="signout-btn" onclick="signOutUser()" style="display:none">Sign Out</button>
     </div>
   </div>
 
@@ -592,13 +1008,31 @@ tr:hover td { background: rgba(255,255,255,0.02); }
     <p style="margin-top:6px;font-size:0.78rem;color:var(--muted)">Make sure you've run the SQL setup in Supabase → SQL Editor.</p>
   </div>
 
+  <div class="setup-shell" id="setup-shell">
+    <div class="setup-card">
+      <div class="section-title" style="margin-bottom:18px">Household Setup</div>
+      <h2 id="setup-title" style="font-family:'Poppins',sans-serif;font-size:1.45rem;font-weight:700;margin-bottom:10px">Create Your Secure Finance Space</h2>
+      <p id="setup-copy" style="color:var(--muted);font-size:0.88rem;line-height:1.6;margin-bottom:20px">
+        This signed-in user does not have any permissions yet. Create the owner profile once, then you can grant your wife access to only the categories you choose.
+      </p>
+      <div class="form-group" id="setup-name-group">
+        <label class="form-label">Display Name</label>
+        <input type="text" class="form-input" id="setup-display-name" placeholder="e.g. Hazem">
+      </div>
+      <button class="btn btn-primary" id="setup-submit-btn" onclick="completeInitialSetup()">Create Owner Profile</button>
+      <div class="access-note" id="setup-note">
+        After this step, run the SQL setup file once in Supabase and add your wife as another auth user. Category-level permissions will decide which budgets she can see or post to.
+      </div>
+    </div>
+  </div>
+
   <!-- TABS -->
-  <div class="tabs">
-    <button class="tab active" data-tab="home">Home</button>
-    <button class="tab" data-tab="expenses">Expenses</button>
-    <button class="tab" data-tab="analysis">Analysis</button>
-    <button class="tab" data-tab="budgets">Budgets</button>
-    <button class="tab" data-tab="wealth">Wealth</button>
+  <div class="tabs" id="app-tabs">
+    <button class="tab active" data-tab="home" id="tab-home">Home</button>
+    <button class="tab" data-tab="expenses" id="tab-expenses">Expenses</button>
+    <button class="tab" data-tab="analysis" id="tab-analysis">Analysis</button>
+    <button class="tab" data-tab="budgets" id="tab-budgets">Budgets</button>
+    <button class="tab" data-tab="wealth" id="tab-wealth">Wealth</button>
   </div>
 
   <!-- HOME -->
@@ -609,6 +1043,22 @@ tr:hover td { background: rgba(255,255,255,0.02); }
   <!-- EXPENSES -->
   <div class="tab-panel" id="panel-expenses">
     <div class="exp-stats" id="exp-stats-row"></div>
+    <div class="shortcut-card">
+      <h3>iPhone SMS Capture</h3>
+      <p>Use an iPhone Shortcut to open this app with parsed bank-message values. If you are already signed in, the app can prefill the expense form and optionally save it automatically.</p>
+      <div class="shortcut-grid">
+        <div class="shortcut-stat">
+          <div class="shortcut-stat-label">Required Fields</div>
+          <div class="shortcut-stat-value"><code>amount</code>, <code>merchant</code></div>
+        </div>
+        <div class="shortcut-stat">
+          <div class="shortcut-stat-label">Optional Fields</div>
+          <div class="shortcut-stat-value"><code>date</code>, <code>category</code>, <code>type</code>, <code>desc</code>, <code>autosave</code></div>
+        </div>
+      </div>
+      <code class="shortcut-code" id="shortcut-template-url"></code>
+      <div class="shortcut-note">Recommended: let Shortcuts detect the merchant and amount, then pass <code>category=Fuel</code> for stations like CHILLOUT. If <code>autosave=1</code>, the app will save immediately after opening when the category is valid.</div>
+    </div>
     <div class="filter-row">
       <div class="search-wrap">
         <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
@@ -862,8 +1312,28 @@ tr:hover td { background: rgba(255,255,255,0.02); }
   </div>
 </div>
 
+<!-- MODAL: WEALTH DETAIL -->
+<div class="modal-overlay" id="modal-wealth-detail">
+  <div class="modal wealth-detail-modal">
+    <div class="modal-header">
+      <div>
+        <div class="modal-title" id="wealth-detail-title">Wealth Detail</div>
+        <div id="wealth-detail-sub" style="font-size:0.75rem;color:var(--muted);margin-top:2px"></div>
+      </div>
+      <button class="modal-close" onclick="closeModal('modal-wealth-detail')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div id="wealth-detail-body"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('modal-wealth-detail')">Close</button>
+      <button class="btn btn-primary" id="wealth-detail-add-btn">Add</button>
+    </div>
+  </div>
+</div>
+
 <!-- FAB -->
-<button class="fab fab-pulse" onclick="openExpenseModal()">
+<button class="fab fab-pulse" id="fab-add-expense" onclick="openExpenseModal()">
   <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 5v14M5 12h14"/></svg>
 </button>
 
@@ -1099,6 +1569,8 @@ tr:hover td { background: rgba(255,255,255,0.02); }
 const SUPABASE_URL = 'https://ppxzhhcceivcdxxxwxqh.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_Bx6XHBQMEnKFJHcv_EEJ6Q_SF9DmA31';
 const db = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+let AUTH_MODE = 'signin';
+let PENDING_SHORTCUT_EXPENSE = null;
 
 /* ══════════════════════════════════════════
    IN-MEMORY STATE
@@ -1107,6 +1579,23 @@ let STATE = {
   expenses: [],   // [{id, date, amount, category, description, type}]
   base: {},       // {category: amount}
   months: {},     // {'YYYY-MM': {started, startDate, label, specificBudgets}}
+  currentUser: null,
+  access: {
+    profileReady: false,
+    email: '',
+    displayName: '',
+    role: 'member',
+    ownerConfigured: false,
+    canManageBudgets: false,
+    canManageMonths: false,
+    canViewWealth: false,
+    canViewIncome: false,
+    categories: {},
+    visibleCategories: [],
+    addableCategories: [],
+    editableBudgetCategories: [],
+    analysisCategories: []
+  },
   loaded: false,
   expPage: 0,         // current expenses page (0-indexed)
   summaryPage: 0,     // current monthly summary page (0-indexed)
@@ -1122,6 +1611,108 @@ const DEFAULT_BASE = {
   'Jamila Routines': 1500, 'Zain Training': 1100, 'Mama': 1000, 'Omar Amr': 500
 };
 
+function resetAppState() {
+  STATE.expenses = [];
+  STATE.base = {};
+  STATE.months = {};
+  STATE.wealth = { cash: [], assets: [], receivables: [], snapshots: [] };
+  STATE.loaded = false;
+  STATE.expPage = 0;
+  STATE.summaryPage = 0;
+}
+
+function parseArabicDigits(value = '') {
+  return String(value)
+    .replace(/[٠-٩]/g, d => '٠١٢٣٤٥٦٧٨٩'.indexOf(d))
+    .replace(/[٫،]/g, '.');
+}
+
+function normalizeShortcutAmount(value) {
+  if (value == null) return null;
+  const cleaned = parseArabicDigits(value).replace(/[^0-9.]/g, '');
+  const amount = parseFloat(cleaned);
+  return Number.isFinite(amount) && amount > 0 ? amount : null;
+}
+
+function normalizeShortcutDate(value) {
+  if (!value) return new Date().toISOString().split('T')[0];
+  const raw = parseArabicDigits(String(value).trim());
+  if (/^\d{4}-\d{2}-\d{2}$/.test(raw)) return raw;
+  const slash = raw.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{2,4})$/);
+  if (slash) {
+    const day = slash[1].padStart(2, '0');
+    const month = slash[2].padStart(2, '0');
+    const year = slash[3].length === 2 ? `20${slash[3]}` : slash[3];
+    return `${year}-${month}-${day}`;
+  }
+  return new Date().toISOString().split('T')[0];
+}
+
+function normalizeShortcutType(value) {
+  return String(value || '').toLowerCase() === 'unplanned' ? 'Unplanned' : 'Planned';
+}
+
+function cleanShortcutText(value = '') {
+  return decodeURIComponent(String(value || '').replace(/\+/g, ' ')).trim();
+}
+
+function inferShortcutCategory(merchant = '') {
+  const name = merchant.toUpperCase();
+  if (name.includes('CHILLOUT') || name.includes('TOTAL') || name.includes('MOBIL') || name.includes('SHELL')) return 'Fuel';
+  if (name.includes('UBER') || name.includes('CAREEM')) return 'Hazem Personal';
+  if (name.includes('MARKET') || name.includes('CARREFOUR') || name.includes('HYPER') || name.includes('GOURMET')) return 'Home';
+  return '';
+}
+
+function getShortcutExpenseFromUrl() {
+  const params = new URLSearchParams(window.location.search);
+  if (!params.has('amount') && !params.has('merchant') && params.get('shortcut') !== 'expense') return null;
+
+  const merchant = cleanShortcutText(params.get('merchant') || params.get('store') || '');
+  const amount = normalizeShortcutAmount(params.get('amount'));
+  if (!merchant || !amount) return null;
+
+  const descriptionParts = [
+    cleanShortcutText(params.get('desc') || ''),
+    cleanShortcutText(params.get('source') || '')
+  ].filter(Boolean);
+
+  return {
+    merchant,
+    amount,
+    date: normalizeShortcutDate(params.get('date')),
+    category: cleanShortcutText(params.get('category') || '') || inferShortcutCategory(merchant),
+    type: normalizeShortcutType(params.get('type')),
+    autosave: ['1', 'true', 'yes'].includes(String(params.get('autosave') || '').toLowerCase()),
+    description: descriptionParts.join(' | ')
+  };
+}
+
+function renderShortcutTemplateUrl() {
+  const el = document.getElementById('shortcut-template-url');
+  if (!el) return;
+  const base = `${window.location.origin}${window.location.pathname}`;
+  el.textContent = `${base}?shortcut=expense&amount=660&merchant=CHILLOUT%20ELG&date=2026-04-01&category=Fuel&type=Planned&autosave=1&source=bank-sms`;
+}
+
+function defaultAccessState(user = null) {
+  return {
+    profileReady: false,
+    email: user?.email || '',
+    displayName: user?.user_metadata?.display_name || user?.email || '',
+    role: 'member',
+    canManageBudgets: false,
+    canManageMonths: false,
+    canViewWealth: false,
+    canViewIncome: false,
+    categories: {},
+    visibleCategories: [],
+    addableCategories: [],
+    editableBudgetCategories: [],
+    analysisCategories: []
+  };
+}
+
 /* ── Month key from date using 19th–18th period rule ── */
 // Jan 19 – Feb 18 → "YYYY-02",  Feb 19 – Mar 18 → "YYYY-03", etc.
 function dateToMonthKey(dateStr) {
@@ -1133,6 +1724,328 @@ function dateToMonthKey(dateStr) {
     return next.toISOString().substring(0, 7);
   }
   return dateStr.substring(0, 7);
+}
+
+function authUserId() {
+  return STATE.currentUser?.id || null;
+}
+
+function normalizeAccessRows(rows = []) {
+  const categories = {};
+  rows.forEach(row => {
+    if (!row?.category_name) return;
+    categories[row.category_name] = {
+      canView: !!row.can_view,
+      canAddExpense: !!row.can_add_expense,
+      canEditBudget: !!row.can_edit_budget,
+      canViewAnalysis: !!row.can_view_analysis
+    };
+  });
+  return categories;
+}
+
+function getCategoryGrant(categoryName) {
+  return STATE.access.categories?.[categoryName] || {
+    canView: false,
+    canAddExpense: false,
+    canEditBudget: false,
+    canViewAnalysis: false
+  };
+}
+
+function canViewCategory(categoryName) {
+  return !!getCategoryGrant(categoryName).canView;
+}
+
+function canAddExpenseToCategory(categoryName) {
+  return !!getCategoryGrant(categoryName).canAddExpense;
+}
+
+function canEditBudgetCategory(categoryName) {
+  return !!getCategoryGrant(categoryName).canEditBudget;
+}
+
+function canViewAnalysisForCategory(categoryName) {
+  return !!getCategoryGrant(categoryName).canViewAnalysis;
+}
+
+function hasAnyCategoryPermission(kind) {
+  return Object.values(STATE.access.categories || {}).some(grant => !!grant?.[kind]);
+}
+
+function getVisibleSpecialBudgets(config, mode = 'view') {
+  const specs = config?.specificBudgets || [];
+  if (!specs.length) return [];
+  return specs.filter(spec => {
+    if (mode === 'add') return canAddExpenseToCategory(spec.name);
+    if (mode === 'edit') return canEditBudgetCategory(spec.name);
+    if (mode === 'analysis') return canViewAnalysisForCategory(spec.name);
+    return canViewCategory(spec.name);
+  });
+}
+
+function getAllKnownCategories() {
+  const set = new Set([
+    ...Object.keys(STATE.base || {}),
+    ...STATE.expenses.map(e => e.category).filter(Boolean)
+  ]);
+  Object.values(STATE.months || {}).forEach(config => {
+    (config?.specificBudgets || []).forEach(spec => set.add(spec.name));
+  });
+  return [...set];
+}
+
+function showAuthError(message = '') {
+  const el = document.getElementById('auth-error');
+  if (!el) return;
+  el.textContent = message;
+  el.classList.toggle('show', !!message);
+}
+
+function withTimeout(promise, ms, message) {
+  let timer = null;
+  const timeoutPromise = new Promise((_, reject) => {
+    timer = setTimeout(() => reject(new Error(message)), ms);
+  });
+  return Promise.race([promise, timeoutPromise]).finally(() => {
+    if (timer) clearTimeout(timer);
+  });
+}
+
+function setAuthMode(mode) {
+  AUTH_MODE = mode;
+  const title = document.getElementById('auth-title');
+  const sub = document.getElementById('auth-sub');
+  const submit = document.getElementById('auth-submit-btn');
+  const modeCopy = document.getElementById('auth-mode-copy');
+  const toggle = document.getElementById('auth-toggle-btn');
+  if (title) title.textContent = mode === 'signup' ? 'Create Account' : 'Sign In';
+  if (sub) sub.textContent = mode === 'signup'
+    ? 'Create a secure account first. After that, permissions in Supabase decide which budgets you can access.'
+    : 'Sign in with your email to load only the budgets and analysis you are allowed to access.';
+  if (submit) submit.textContent = mode === 'signup' ? 'Create Account' : 'Sign In';
+  if (modeCopy) modeCopy.textContent = mode === 'signup' ? 'Already have an account?' : 'Need an account?';
+  if (toggle) toggle.textContent = mode === 'signup' ? 'Sign in' : 'Create one';
+  showAuthError('');
+}
+
+function toggleAuthMode() {
+  setAuthMode(AUTH_MODE === 'signin' ? 'signup' : 'signin');
+}
+
+function setShellState(kind) {
+  const authShell = document.getElementById('auth-shell');
+  const appShell = document.getElementById('app-shell');
+  const setupShell = document.getElementById('setup-shell');
+  const tabs = document.getElementById('app-tabs');
+  if (authShell) authShell.classList.toggle('open', kind === 'auth');
+  if (appShell) appShell.classList.toggle('ready', kind !== 'auth');
+  if (setupShell) setupShell.classList.toggle('open', kind === 'setup');
+  if (tabs) tabs.style.display = kind === 'setup' ? 'none' : '';
+  document.querySelectorAll('.tab-panel').forEach(panel => {
+    panel.style.display = kind === 'setup' ? 'none' : '';
+  });
+}
+
+function updateUserChip() {
+  const chip = document.getElementById('user-chip');
+  const name = document.getElementById('user-chip-name');
+  const role = document.getElementById('user-chip-role');
+  const signout = document.getElementById('signout-btn');
+  if (chip) chip.style.display = STATE.currentUser ? 'inline-flex' : 'none';
+  if (signout) signout.style.display = STATE.currentUser ? 'inline-flex' : 'none';
+  if (name) name.textContent = STATE.access.displayName || STATE.access.email || 'Signed in';
+  if (role) role.textContent = STATE.access.role || 'member';
+}
+
+function renderSetupShell(mode, message = '') {
+  const title = document.getElementById('setup-title');
+  const copy = document.getElementById('setup-copy');
+  const group = document.getElementById('setup-name-group');
+  const button = document.getElementById('setup-submit-btn');
+  const note = document.getElementById('setup-note');
+  if (!title || !copy || !group || !button || !note) return;
+
+  if (mode === 'pending_access') {
+    title.textContent = 'Access Not Assigned Yet';
+    copy.textContent = message || 'This account is signed in, but no access permissions have been assigned yet. Ask the owner to grant this user the categories they should see.';
+    group.style.display = 'none';
+    button.style.display = 'none';
+    note.textContent = 'Your session is still active. Once permissions are added in Supabase, reload this page and you should enter the app without signing in again.';
+  } else {
+    title.textContent = 'Create Your Secure Finance Space';
+    copy.textContent = 'This signed-in user does not have any permissions yet. Create the owner profile once, then you can grant your wife access to only the categories you choose.';
+    group.style.display = '';
+    button.style.display = '';
+    note.textContent = 'After this step, run the SQL setup file once in Supabase and add your wife as another auth user. Category-level permissions will decide which budgets she can see or post to.';
+  }
+}
+
+function applyPermissionDrivenUI() {
+  const tabBudgets = document.getElementById('tab-budgets');
+  const tabWealth = document.getElementById('tab-wealth');
+  const tabAnalysis = document.getElementById('tab-analysis');
+  const fab = document.getElementById('fab-add-expense');
+  const mobileAdd = document.getElementById('mobile-add-btn');
+  const canAddAnyExpense = STATE.access.addableCategories.length > 0;
+  const canViewAnyAnalysis = STATE.access.analysisCategories.length > 0;
+  if (tabBudgets) tabBudgets.style.display = STATE.access.canManageBudgets ? '' : 'none';
+  if (tabWealth) tabWealth.style.display = STATE.access.canViewWealth ? '' : 'none';
+  if (tabAnalysis) tabAnalysis.style.display = canViewAnyAnalysis ? '' : 'none';
+  if (fab) fab.style.display = canAddAnyExpense ? '' : 'none';
+  if (mobileAdd) mobileAdd.style.display = canAddAnyExpense ? '' : 'none';
+}
+
+async function loadAccessContext() {
+  const user = STATE.currentUser;
+  STATE.access = defaultAccessState(user);
+  if (!user) return;
+
+  const [{ data: profile }, { data: appPerm }, ownerCountRes, { data: catPerms, error: catErr }] = await Promise.all([
+    db.from('profiles').select('display_name').eq('id', user.id).maybeSingle(),
+    db.from('app_user_permissions').select('role, can_manage_budgets, can_manage_months, can_view_wealth, can_view_income').eq('user_id', user.id).maybeSingle(),
+    db.from('app_user_permissions').select('user_id', { count: 'exact', head: true }),
+    db.from('category_permissions').select('category_name, can_view, can_add_expense, can_edit_budget, can_view_analysis').eq('user_id', user.id)
+  ]);
+
+  if (catErr) throw catErr;
+
+  const categories = normalizeAccessRows(catPerms || []);
+  STATE.access = {
+    profileReady: !!profile,
+    email: user.email || '',
+    displayName: profile?.display_name || user.user_metadata?.display_name || user.email || '',
+    role: appPerm?.role || 'member',
+    ownerConfigured: (ownerCountRes?.count || 0) > 0,
+    canManageBudgets: !!appPerm?.can_manage_budgets,
+    canManageMonths: !!appPerm?.can_manage_months,
+    canViewWealth: !!appPerm?.can_view_wealth,
+    canViewIncome: !!appPerm?.can_view_income,
+    categories,
+    visibleCategories: Object.keys(categories).filter(name => categories[name].canView),
+    addableCategories: Object.keys(categories).filter(name => categories[name].canAddExpense),
+    editableBudgetCategories: Object.keys(categories).filter(name => categories[name].canEditBudget),
+    analysisCategories: Object.keys(categories).filter(name => categories[name].canViewAnalysis)
+  };
+}
+
+async function handleSignedInUser(user) {
+  STATE.currentUser = user;
+  updateUserChip();
+  await loadAccessContext();
+  if (!STATE.access.profileReady) {
+    renderSetupShell(STATE.access.ownerConfigured ? 'pending_access' : 'owner_setup');
+    setShellState('setup');
+    showLoader(false);
+    return;
+  }
+  setShellState('app');
+  await initDB();
+  maybeHandleShortcutExpense();
+}
+
+async function submitAuthForm() {
+  const email = document.getElementById('auth-email')?.value?.trim();
+  const password = document.getElementById('auth-password')?.value || '';
+  const btn = document.getElementById('auth-submit-btn');
+  if (!email || !password) {
+    showAuthError('Enter both email and password.');
+    return;
+  }
+
+  showAuthError('');
+  if (btn) {
+    btn.disabled = true;
+    btn.textContent = AUTH_MODE === 'signup' ? 'Creating…' : 'Signing in…';
+  }
+
+  try {
+    if (AUTH_MODE === 'signup') {
+      const { error } = await db.auth.signUp({
+        email,
+        password,
+        options: { data: { display_name: email.split('@')[0] } }
+      });
+      if (error) throw error;
+      showAuthError('Account created. Sign in if your session was not started automatically.');
+      setAuthMode('signin');
+    } else {
+      const { error } = await db.auth.signInWithPassword({ email, password });
+      if (error) throw error;
+    }
+  } catch (err) {
+    showAuthError(err.message || 'Authentication failed.');
+  } finally {
+    if (btn) {
+      btn.disabled = false;
+      btn.textContent = AUTH_MODE === 'signup' ? 'Create Account' : 'Sign In';
+    }
+  }
+}
+
+async function signOutUser() {
+  await db.auth.signOut();
+}
+
+async function completeInitialSetup() {
+  const user = STATE.currentUser;
+  const displayName = document.getElementById('setup-display-name')?.value?.trim() || user?.email?.split('@')[0] || 'Owner';
+  const btn = document.getElementById('setup-submit-btn');
+  if (!user) return;
+  if (btn) {
+    btn.disabled = true;
+    btn.textContent = 'Saving…';
+  }
+  try {
+    const { error } = await db.rpc('bootstrap_owner_permissions', { p_display_name: displayName });
+    if (error) throw error;
+    await loadAccessContext();
+    setShellState('app');
+    await initDB();
+  } catch (err) {
+    showToast('Setup failed: ' + (err.message || 'Unknown error'), 'error');
+  } finally {
+    if (btn) {
+      btn.disabled = false;
+      btn.textContent = 'Create Owner Profile';
+    }
+  }
+}
+
+async function bootApp() {
+  showLoader(true);
+  setAuthMode('signin');
+  try {
+    const { data, error } = await withTimeout(
+      db.auth.getSession(),
+      2500,
+      'Session restore timed out'
+    );
+    if (error) throw error;
+    if (!data?.session?.user) {
+      showLoader(false);
+      setShellState('auth');
+      return;
+    }
+    await withTimeout(
+      handleSignedInUser(data.session.user),
+      5000,
+      'Signed-in user bootstrap timed out'
+    );
+  } catch (err) {
+    showLoader(false);
+    if ((err.message || '').includes('Signed-in user bootstrap timed out')) {
+      renderSetupShell('pending_access', 'Your account is still signed in, but loading your access took too long. Reload the page after verifying this user has permission rows in Supabase.');
+      setShellState('setup');
+      return;
+    }
+    setShellState('auth');
+    if ((err.message || '').includes('Session restore timed out')) {
+      showAuthError('');
+      return;
+    }
+    showAuthError(err.message || 'Could not load your access permissions. Run the SQL setup first.');
+  }
 }
 
 /* ── Build historical data from STATE ── */
@@ -1167,13 +2080,14 @@ function buildHistoricalData() {
   return filtered.sort((a,b) => b.localeCompare(a)).map(key => {
     const config   = STATE.months[key] || {};
     const isActive = key === activeKey;
-    const exps     = STATE.expenses.filter(e => (e.month_key || dateToMonthKey(e.date)) === key);
+    const exps     = STATE.expenses.filter(e => (e.month_key || dateToMonthKey(e.date)) === key && canViewAnalysisForCategory(e.category));
     const spending = exps.reduce((s,e)=>s+e.amount, 0);
     const unplanned= exps.filter(e=>e.type==='Unplanned').reduce((s,e)=>s+e.amount,0);
-    const budget   = Object.values(STATE.base).reduce((s,v)=>s+v,0) +
-                     (config.specificBudgets||[]).reduce((s,b)=>s+b.amount,0);
-    const income   = config.income || 0;
-    const meta     = getIncomeMeta(key);
+    const visibleSpecBudgets = getVisibleSpecialBudgets(config, 'analysis');
+    const budget   = Object.entries(STATE.base).reduce((s,[cat,v])=>s+(canViewAnalysisForCategory(cat) ? v : 0),0) +
+                     visibleSpecBudgets.reduce((s,b)=>s+b.amount,0);
+    const income   = STATE.access.canViewIncome ? (config.income || 0) : 0;
+    const meta     = STATE.access.canViewIncome ? getIncomeMeta(key) : null;
     // Savings = Salary - Budget - Unplanned
     const savings  = income > 0 ? income - budget - unplanned : null;
     const savingsUsd = savings !== null && meta?.rate ? savings / meta.rate : null;
@@ -1213,7 +2127,7 @@ async function migrateWealthFromLocalStorage() {
       if (meta?.usd && meta?.rate) {
         const cfg = STATE.months[key];
         if (!cfg.income_usd) {
-          await db.from('month_configs').update({ income_usd: meta.usd, income_rate: meta.rate }).eq('month_key', key);
+          await db.from('month_income').upsert({ month_key: key, income: cfg.income || 0, income_usd: meta.usd, income_rate: meta.rate }, { onConflict: 'month_key' });
           STATE.months[key] = { ...cfg, income_usd: meta.usd, income_rate: meta.rate };
         }
       }
@@ -1227,15 +2141,17 @@ async function migrateWealthFromLocalStorage() {
 ══════════════════════════════════════════ */
 async function initDB() {
   showLoader(true);
+  resetAppState();
   try {
-    const [expRes, baseRes, monthRes, cashRes, assetRes, recvRes, snapRes] = await Promise.all([
+    const [expRes, baseRes, monthRes, incomeRes, cashRes, assetRes, recvRes, snapRes] = await Promise.all([
       db.from('expenses').select('*').order('date', { ascending: false }).limit(9999),
       db.from('base_budgets').select('*'),
       db.from('month_configs').select('*'),
-      db.from('wealth_cash').select('*'),
-      db.from('wealth_assets').select('*'),
-      db.from('wealth_receivables').select('*'),
-      db.from('wealth_snapshots').select('*').order('month_key', { ascending: true })
+      STATE.access.canViewIncome ? db.from('month_income').select('*') : Promise.resolve({ data: [] }),
+      STATE.access.canViewWealth ? db.from('wealth_cash').select('*') : Promise.resolve({ data: [] }),
+      STATE.access.canViewWealth ? db.from('wealth_assets').select('*') : Promise.resolve({ data: [] }),
+      STATE.access.canViewWealth ? db.from('wealth_receivables').select('*') : Promise.resolve({ data: [] }),
+      STATE.access.canViewWealth ? db.from('wealth_snapshots').select('*').order('month_key', { ascending: true }) : Promise.resolve({ data: [] })
     ]);
 
     if (expRes.error) throw expRes.error;
@@ -1247,19 +2163,27 @@ async function initDB() {
       id: r.id, date: r.date, amount: Number(r.amount),
       category: r.category, description: r.description || '', type: r.type || 'Planned',
       month_key: r.month_key || dateToMonthKey(r.date) // fallback for old expenses
-    }));
+    })).filter(r => canViewCategory(r.category));
 
-    STATE.base = Object.fromEntries((baseRes.data || []).map(r => [r.category, Number(r.amount)]));
+    STATE.base = Object.fromEntries((baseRes.data || [])
+      .filter(r => canViewCategory(r.category))
+      .map(r => [r.category, Number(r.amount)]));
 
     STATE.months = Object.fromEntries((monthRes.data || []).map(r => [r.month_key, {
       started: r.started,
       startDate: r.start_date,
       label: r.label,
-      income: Number(r.income || 0),
-      income_usd: r.income_usd || null,
-      income_rate: r.income_rate || null,
       specificBudgets: r.specific_budgets || []
     }]));
+
+    (incomeRes.data || []).forEach(r => {
+      STATE.months[r.month_key] = {
+        ...(STATE.months[r.month_key] || { started: false, startDate: null, label: monthLabel(r.month_key), specificBudgets: [] }),
+        income: Number(r.income || 0),
+        income_usd: r.income_usd || null,
+        income_rate: r.income_rate || null
+      };
+    });
 
     // Load wealth from DB
     STATE.wealth.cash        = (cashRes.data  || []).map(r => ({ id:r.id, currency:r.currency, amount:Number(r.amount), rate:r.rate, notes:r.notes||'' }));
@@ -1267,17 +2191,21 @@ async function initDB() {
     STATE.wealth.receivables = (recvRes.data  || []).map(r => ({ id:r.id, person:r.person, amount:Number(r.amount), currency:r.currency, notes:r.notes||'' }));
     STATE.wealth.snapshots   = (snapRes.data  || []).map(r => ({ month_key:r.month_key, net_egp:Number(r.net_egp), net_usd:r.net_usd?Number(r.net_usd):null, cash_egp:Number(r.cash_egp||0), assets_egp:Number(r.assets_egp||0), recv_egp:Number(r.recv_egp||0), rates:r.rates||{}, asset_prices:r.asset_prices||{}, notes:r.notes||'' }));
 
-    // One-time migration from localStorage → DB (for existing users)
-    await migrateWealthFromLocalStorage();
+    // One-time migration from localStorage → DB (for owner accounts only)
+    if (STATE.access.canViewWealth) {
+      await migrateWealthFromLocalStorage();
+    }
 
     // Seed default base budgets if empty
-    if (!Object.keys(STATE.base).length) {
+    if (!Object.keys(STATE.base).length && STATE.access.canManageBudgets) {
       await seedDefaultBudgets();
     }
 
     STATE.loaded = true;
     setDBStatus(true);
     showLoader(false);
+    applyPermissionDrivenUI();
+    updateUserChip();
     renderHome();
     renderExpenses();
 
@@ -1286,6 +2214,7 @@ async function initDB() {
     showLoader(false);
     setDBStatus(false);
     showDBError(err.message || 'Connection failed');
+    applyPermissionDrivenUI();
     // Still render with empty state
     renderHome();
     renderExpenses();
@@ -1303,6 +2232,7 @@ async function seedDefaultBudgets() {
    DB MUTATIONS
 ══════════════════════════════════════════ */
 async function dbAddExpense(expense) {
+  if (!canAddExpenseToCategory(expense.category)) throw new Error('You do not have permission to add expenses to this category.');
   const { error } = await db.from('expenses').insert({
     id: expense.id,
     date: expense.date,
@@ -1317,12 +2247,15 @@ async function dbAddExpense(expense) {
 }
 
 async function dbDeleteExpense(id) {
+  const current = STATE.expenses.find(e => e.id === id);
+  if (current && !canAddExpenseToCategory(current.category)) throw new Error('You do not have permission to delete this expense.');
   const { error } = await db.from('expenses').delete().eq('id', id);
   if (error) throw error;
   STATE.expenses = STATE.expenses.filter(e => e.id !== id);
 }
 
 async function dbUpdateExpense(expense) {
+  if (!canAddExpenseToCategory(expense.category)) throw new Error('You do not have permission to update this expense.');
   const { error } = await db.from('expenses').update({
     date: expense.date, amount: expense.amount,
     category: expense.category, description: expense.description || '',
@@ -1334,6 +2267,7 @@ async function dbUpdateExpense(expense) {
 }
 
 async function dbRenameCategory(oldName, newName) {
+  if (!canEditBudgetCategory(oldName)) throw new Error('You do not have permission to rename this budget category.');
   // Update base_budgets row
   const amount = STATE.base[oldName];
   const { error: e1 } = await db.from('base_budgets').delete().eq('category', oldName);
@@ -1350,30 +2284,47 @@ async function dbRenameCategory(oldName, newName) {
 }
 
 async function dbDeleteCategory(cat) {
+  if (!canEditBudgetCategory(cat)) throw new Error('You do not have permission to delete this budget category.');
   const { error } = await db.from('base_budgets').delete().eq('category', cat);
   if (error) throw error;
   delete STATE.base[cat];
 }
 
 async function dbUpsertBase(category, amount) {
+  if (!canEditBudgetCategory(category)) throw new Error('You do not have permission to edit this budget category.');
   const { error } = await db.from('base_budgets').upsert({ category, amount }, { onConflict: 'category' });
   if (error) throw error;
   STATE.base[category] = amount;
 }
 
 async function dbUpsertMonth(key, config) {
+  if (!STATE.access.canManageMonths && !STATE.access.canManageBudgets) throw new Error('You do not have permission to update month settings.');
   const { error } = await db.from('month_configs').upsert({
     month_key: key,
     label: config.label,
     started: config.started,
     start_date: config.startDate || null,
-    income: config.income || 0,
-    income_usd: config.income_usd || null,
-    income_rate: config.income_rate || null,
     specific_budgets: config.specificBudgets || []
   }, { onConflict: 'month_key' });
   if (error) throw error;
   STATE.months[key] = config;
+}
+
+async function dbUpsertMonthIncome(key, income, incomeUsd = null, incomeRate = null) {
+  if (!STATE.access.canManageMonths) throw new Error('You do not have permission to update income.');
+  const { error } = await db.from('month_income').upsert({
+    month_key: key,
+    income: income || 0,
+    income_usd: incomeUsd || null,
+    income_rate: incomeRate || null
+  }, { onConflict: 'month_key' });
+  if (error) throw error;
+  STATE.months[key] = {
+    ...(STATE.months[key] || { started: false, startDate: null, label: monthLabel(key), specificBudgets: [] }),
+    income: income || 0,
+    income_usd: incomeUsd || null,
+    income_rate: incomeRate || null
+  };
 }
 
 /* ══════════════════════════════════════════
@@ -1444,11 +2395,11 @@ function renderHome() {
       <div class="no-month-state">
         <div class="no-month-icon">📅</div>
         <h2>No Active Month</h2>
-        <p>When your salary arrives, start a new budget month to track your spending against your budgets.</p>
-        <button class="btn-start-hero" onclick="openStartModal()">
+        <p>${STATE.access.canManageMonths ? 'When your salary arrives, start a new budget month to track your spending against your budgets.' : 'No active month is visible yet. Ask the owner to start the current budget month.'}</p>
+        ${STATE.access.canManageMonths ? `<button class="btn-start-hero" onclick="openStartModal()">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 5v14M5 12h14"/></svg>
           Start New Month
-        </button>
+        </button>` : ''}
       </div>`;
     return;
   }
@@ -1460,13 +2411,14 @@ function renderHome() {
   expenses.forEach(e => { byCategory[e.category] = (byCategory[e.category]||0) + e.amount; });
 
   const baseTotal    = Object.values(base).reduce((s,v)=>s+v, 0);
-  const specTotal    = (config.specificBudgets||[]).reduce((s,b)=>s+b.amount, 0);
+  const visibleSpecs = getVisibleSpecialBudgets(config, 'view');
+  const specTotal    = visibleSpecs.reduce((s,b)=>s+b.amount, 0);
   const totalBudget  = baseTotal + specTotal;
   const totalSpent   = expenses.reduce((s,e)=>s+e.amount, 0);
   const unplanned    = expenses.filter(e=>e.type==='Unplanned').reduce((s,e)=>s+e.amount, 0);
   const remaining    = totalBudget - totalSpent;
   const overallPct   = totalBudget > 0 ? Math.min((totalSpent/totalBudget)*100, 100) : 0;
-  const income       = config.income || 0;
+  const income       = STATE.access.canViewIncome ? (config.income || 0) : 0;
   // Savings = Salary - Configured Budget - Unplanned Expenses
   const savings      = income > 0 ? income - totalBudget - unplanned : null;
   const meta         = getIncomeMeta(activeKey);
@@ -1479,7 +2431,7 @@ function renderHome() {
     return buildBCard(cat, budget, spent, budget>0?(spent/budget)*100:0);
   }).join('');
 
-  const specs = config.specificBudgets||[];
+  const specs = visibleSpecs;
   const specCards = specs.map(s => {
     const spent = byCategory[s.name]||0;
     return buildBCard(s.name, s.amount, spent, s.amount>0?(spent/s.amount)*100:0, true);
@@ -1496,27 +2448,24 @@ function renderHome() {
           <div class="month-sub">Started ${fmtDate(config.startDate)} · Active tracking period</div>
         </div>
         <div class="month-actions">
-          <button class="btn btn-ghost btn-sm" onclick="openStartModal()">
+          ${STATE.access.canManageMonths ? `<button class="btn btn-ghost btn-sm" onclick="openStartModal()">
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 5v14M5 12h14"/></svg>
             New Month
-          </button>
-          <button class="btn btn-primary btn-sm" onclick="openExpenseModal()">
+          </button>` : ''}
+          ${STATE.access.addableCategories.length ? `<button class="btn btn-primary btn-sm" onclick="openExpenseModal()">
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 5v14M5 12h14"/></svg>
             Add Expense
-          </button>
+          </button>` : ''}
         </div>
       </div>
-      <!-- 3-card row: Salary · Budget Spending · Savings -->
       <div class="month-stats" style="margin-bottom:4px">
-        <!-- Salary -->
-        <div class="stat-block">
+        ${STATE.access.canViewIncome ? `<div class="stat-block">
           <div class="stat-block-label">💰 Salary
             <button onclick="openIncomeModal('${activeKey}')" style="background:none;border:none;color:var(--blue);font-size:0.7rem;cursor:pointer;padding:0 0 0 4px;font-weight:600">${income>0?'✏️':'+ Set'}</button>
           </div>
           <div class="stat-block-val green">${incomeUsd ? '$'+Math.round(incomeUsd).toLocaleString() : income>0?fmtShort(income)+' EGP':'<span style="font-size:0.95rem;color:var(--muted)">Not set</span>'}</div>
           ${incomeRate?`<div class="stat-block-sub private-val">1 USD = ${incomeRate.toFixed(2)} EGP</div>`:`<div class="stat-block-sub">${income>0?income.toLocaleString('en-EG')+' EGP':'Set salary to track'}</div>`}
-        </div>
-        <!-- Budget Spending -->
+        </div>` : ''}
         ${(()=>{
           const spentUsd    = incomeRate ? Math.round(totalSpent/incomeRate) : null;
           const budgetUsd   = incomeRate ? Math.round(totalBudget/incomeRate) : null;
@@ -1539,14 +2488,13 @@ function renderHome() {
             </div>
           </div>`;
         })()}
-        <!-- Savings -->
-        <div class="stat-block" style="background:rgba(${savings!==null&&savings>=0?'34,197,94':'239,68,68'},0.06)">
+        ${STATE.access.canViewIncome ? `<div class="stat-block" style="background:rgba(${savings!==null&&savings>=0?'34,197,94':'239,68,68'},0.06)">
           <div class="stat-block-label">🎯 Savings${savings!==null&&income>0?` · <span class="private-val" style="font-weight:400">${(savings/income*100).toFixed(0)}% rate</span>`:''}</div>
           <div class="stat-block-val ${savings!==null?(savings>=0?'green':'red'):''}">
             ${savingsUsd!==null ? (savings<0?'-':'')+'$'+Math.abs(Math.round(savingsUsd)).toLocaleString() : savings!==null?(savings<0?'-':'')+fmtShort(Math.abs(savings))+' EGP':'—'}
           </div>
           <div class="stat-block-sub">${savings!==null?savings.toLocaleString('en-EG')+' EGP':'Set salary to calculate'}</div>
-        </div>
+        </div>` : ''}
       </div>
     </div>
 
@@ -1682,14 +2630,14 @@ function renderExpenses() {
       <td style="font-weight:700;color:var(--amber)" class="private-val">${e.amount.toLocaleString('en-EG')}</td>
       <td><span class="type-pill ${(e.type||'Planned').toLowerCase()}">${e.type||'Planned'}</span></td>
       <td>
-        <div class="row-actions">
+        ${canAddExpenseToCategory(e.category) ? `<div class="row-actions">
           <button class="edit-btn" onclick="openEditExpense('${e.id}')" title="Edit">
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
           </button>
           <button class="del-btn" onclick="deleteExpense('${e.id}')" title="Delete">
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4h6v2"/></svg>
           </button>
-        </div>
+        </div>` : '<span style="color:var(--muted);font-size:0.72rem">View only</span>'}
       </td>
     </tr>`).join('');
 
@@ -1733,6 +2681,13 @@ function renderExpenses() {
    RENDER BUDGETS TAB
 ══════════════════════════════════════════ */
 function renderBudgetsTab() {
+  if (!STATE.access.canManageBudgets) {
+    const panel = document.getElementById('panel-budgets');
+    if (panel) {
+      panel.innerHTML = `<div class="empty-state"><p>You do not have permission to manage budgets.</p></div>`;
+    }
+    return;
+  }
   renderBaseBudgetTable();
   renderMonthPlanning();
 }
@@ -1743,12 +2698,13 @@ function renderBaseBudgetTable() {
   if (!tbody) return;
   tbody.innerHTML = Object.entries(base).map(([cat,amt]) => {
     const key = cat.replace(/[^a-zA-Z0-9]/g,'_');
+    const canEdit = canEditBudgetCategory(cat);
     return `
     <tr id="brow-${key}">
       <td id="bname-${key}" style="font-weight:600">${cat}</td>
       <td id="bcell-${key}">${Number(amt).toLocaleString('en-EG')} EGP</td>
       <td>
-        <div class="row-actions">
+        ${canEdit ? `<div class="row-actions">
           <button class="btn btn-ghost btn-sm" onclick="startBudgetEdit('${cat}')">
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
             Edit
@@ -1760,7 +2716,7 @@ function renderBaseBudgetTable() {
           <button class="del-btn" onclick="deleteBudgetCategory('${cat}')" title="Delete category" style="margin-left:4px">
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4h6v2"/></svg>
           </button>
-        </div>
+        </div>` : '<span style="color:var(--muted);font-size:0.74rem">View only</span>'}
       </td>
     </tr>`;
   }).join('');
@@ -1861,11 +2817,11 @@ function renderMonthPlanning() {
   if (!grid) return;
   const keysWithSpec = Object.keys(months).filter(k=>(months[k].specificBudgets||[]).length>0).sort();
   if (!keysWithSpec.length) { grid.innerHTML=''; if(empty) empty.style.display='block'; return; }
-  if (empty) empty.style.display='none';
-  grid.innerHTML = keysWithSpec.map(key => {
+  const cards = keysWithSpec.map(key => {
     const config = months[key];
-    const specs = config.specificBudgets||[];
+    const specs = getVisibleSpecialBudgets(config, 'edit');
     const total = specs.reduce((s,b)=>s+b.amount,0);
+    if (!specs.length) return '';
     return `
       <div class="month-plan-card">
         <div class="month-plan-header">
@@ -1883,7 +2839,14 @@ function renderMonthPlanning() {
             </div>`).join('')}
         </div>
       </div>`;
-  }).join('');
+  }).filter(Boolean);
+  if (!cards.length) {
+    grid.innerHTML = '';
+    if (empty) empty.style.display = 'block';
+    return;
+  }
+  if (empty) empty.style.display='none';
+  grid.innerHTML = cards.join('');
 }
 
 /* ══════════════════════════════════════════
@@ -1892,6 +2855,11 @@ function renderMonthPlanning() {
 let chartInstances = {};
 
 function renderAnalysis() {
+  if (!STATE.access.analysisCategories.length) {
+    const panel = document.getElementById('panel-analysis');
+    if (panel) panel.innerHTML = `<div class="empty-state"><p>You do not have permission to view analysis.</p></div>`;
+    return;
+  }
   // Sync active year-filter button
   document.querySelectorAll('[id^="yr-btn-"]').forEach(b => b.classList.remove('active'));
   const activeBtn = document.getElementById(`yr-btn-${STATE.analysisYear}`);
@@ -1910,7 +2878,7 @@ function openMonthDetail(key) {
   _detailKey = key;
   _detailCatFilter = null;
   const config   = STATE.months[key] || {};
-  const expenses = STATE.expenses.filter(e => (e.month_key || dateToMonthKey(e.date)) === key);
+  const expenses = STATE.expenses.filter(e => (e.month_key || dateToMonthKey(e.date)) === key && canViewAnalysisForCategory(e.category));
   const spent    = expenses.reduce((s,e)=>s+e.amount, 0);
   const planned  = expenses.filter(e=>(e.type||'Planned')==='Planned').reduce((s,e)=>s+e.amount, 0);
   const unplanned= expenses.filter(e=>e.type==='Unplanned').reduce((s,e)=>s+e.amount, 0);
@@ -2014,7 +2982,9 @@ function renderArchivedMonths() {
   const sel = document.getElementById('dive-month-select');
   if (sel) {
     const prev = sel.value;
-    const allKeys = Object.entries(STATE.months).sort(([a],[b]) => b.localeCompare(a));
+    const allKeys = Object.entries(STATE.months)
+      .filter(([k]) => STATE.expenses.some(e => (e.month_key || dateToMonthKey(e.date)) === k && canViewAnalysisForCategory(e.category)))
+      .sort(([a],[b]) => b.localeCompare(a));
     sel.innerHTML = `<option value="">— Select a month —</option>` +
       allKeys.map(([k,c]) => `<option value="${k}"${k===prev?' selected':''}>${c.label||monthLabel(k)}${c.started?' (Active)':''}</option>`).join('');
     if (prev) renderMonthDive(prev);
@@ -2029,14 +2999,14 @@ function renderMonthDive(key) {
   const config  = STATE.months[key];
   if (!config)  { content.innerHTML = ''; return; }
 
-  const expenses   = STATE.expenses.filter(e => (e.month_key||dateToMonthKey(e.date)) === key);
+  const expenses   = STATE.expenses.filter(e => (e.month_key||dateToMonthKey(e.date)) === key && canViewAnalysisForCategory(e.category));
   const totalSpent = expenses.reduce((s,e)=>s+e.amount, 0);
   const planned    = expenses.filter(e=>e.type!=='Unplanned').reduce((s,e)=>s+e.amount,0);
   const unplanned  = expenses.filter(e=>e.type==='Unplanned').reduce((s,e)=>s+e.amount,0);
   const base       = STATE.base;
-  const budget     = Object.values(base).reduce((s,v)=>s+v,0) + (config.specificBudgets||[]).reduce((s,b)=>s+b.amount,0);
-  const income     = config.income || 0;
-  const meta       = getIncomeMeta(key);
+  const budget     = Object.entries(base).reduce((s,[cat,v])=>s+(canViewAnalysisForCategory(cat) ? v : 0),0) + getVisibleSpecialBudgets(config, 'analysis').reduce((s,b)=>s+b.amount,0);
+  const income     = STATE.access.canViewIncome ? (config.income || 0) : 0;
+  const meta       = STATE.access.canViewIncome ? getIncomeMeta(key) : null;
   const savings    = income > 0 ? income - budget - unplanned : null;
   const savePct    = income > 0 ? (savings/income*100).toFixed(1) : null;
   const budgetPct  = budget > 0 ? Math.min((totalSpent/budget)*100,100).toFixed(1) : 0;
@@ -2128,7 +3098,7 @@ function renderMonthDive(key) {
       <div style="font-size:0.72rem;font-weight:600;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);margin-bottom:14px">Spending by Category</div>
       ${catEntries.length ? catEntries.map(([cat,amt],i) => {
         const pct = (amt/maxCat*100).toFixed(1);
-        const budgetAmt = base[cat] || (config.specificBudgets||[]).find(b=>b.name===cat)?.amount || 0;
+        const budgetAmt = base[cat] || getVisibleSpecialBudgets(config, 'analysis').find(b=>b.name===cat)?.amount || 0;
         const color = catColors[i % catColors.length];
         return `
         <div class="dive-cat-row">
@@ -2308,6 +3278,10 @@ function openModal(id)  { document.getElementById(id)?.classList.add('open'); }
 function closeModal(id) { document.getElementById(id)?.classList.remove('open'); }
 
 function openExpenseModal() {
+  if (!STATE.access.addableCategories.length) {
+    showToast('You do not have permission to add expenses.', 'error');
+    return;
+  }
   _editingId = null;
   buildCategoryDropdown();
   document.getElementById('f-date').value = new Date().toISOString().split('T')[0];
@@ -2323,6 +3297,10 @@ function openExpenseModal() {
 function openEditExpense(id) {
   const expense = STATE.expenses.find(e => e.id === id);
   if (!expense) return;
+  if (!canAddExpenseToCategory(expense.category)) {
+    showToast('You do not have permission to edit this expense.', 'error');
+    return;
+  }
   _editingId = id;
   // Pass the expense's own month_key so its special budgets appear in dropdown
   buildCategoryDropdown(expense.month_key || dateToMonthKey(expense.date));
@@ -2354,11 +3332,66 @@ function buildCategoryDropdown(monthKey) {
   keysToCheck.forEach(k => {
     (STATE.months[k]?.specificBudgets || []).forEach(s => specialNames.add(s.name));
   });
-  const baseCategories = Object.keys(STATE.base);
+  const baseCategories = Object.keys(STATE.base).filter(cat => canAddExpenseToCategory(cat));
   // Specials that aren't already in base
-  const extraSpecials = [...specialNames].filter(n => !baseCategories.includes(n));
-  const opts = [...baseCategories, ...extraSpecials, 'Other'];
+  const extraSpecials = [...specialNames].filter(n => !baseCategories.includes(n) && canAddExpenseToCategory(n));
+  const opts = [...baseCategories, ...extraSpecials];
   sel.innerHTML = opts.map(o=>`<option value="${o}">${o}</option>`).join('');
+}
+
+function resolveShortcutCategory(preferredCategory) {
+  if (preferredCategory && canAddExpenseToCategory(preferredCategory)) return preferredCategory;
+  if (preferredCategory && STATE.access.addableCategories.includes(preferredCategory)) return preferredCategory;
+  return STATE.access.addableCategories[0] || '';
+}
+
+function fillExpenseForm(expense, categoryOverride = '') {
+  buildCategoryDropdown(expense.month_key || dateToMonthKey(expense.date));
+  document.getElementById('f-date').value = expense.date;
+  document.getElementById('f-amount').value = expense.amount;
+  document.getElementById('f-desc').value = expense.description || '';
+  const catSel = document.getElementById('f-category');
+  if (catSel && categoryOverride) {
+    if (![...catSel.options].some(o => o.value === categoryOverride)) {
+      catSel.insertAdjacentHTML('beforeend', `<option value="${categoryOverride}">${categoryOverride}</option>`);
+    }
+    catSel.value = categoryOverride;
+  }
+  selectType(expense.type || 'Planned');
+}
+
+function maybeHandleShortcutExpense() {
+  const payload = PENDING_SHORTCUT_EXPENSE || getShortcutExpenseFromUrl();
+  if (!payload || !STATE.currentUser || !STATE.access.addableCategories.length) return;
+
+  const category = resolveShortcutCategory(payload.category);
+  if (!category) {
+    showToast('Shortcut import found, but this account cannot add expenses.', 'error');
+    return;
+  }
+
+  const expense = {
+    date: payload.date,
+    amount: payload.amount,
+    description: payload.description ? `${payload.merchant} | ${payload.description}` : payload.merchant,
+    type: payload.type,
+    month_key: getActiveKey() || dateToMonthKey(payload.date)
+  };
+
+  _editingId = null;
+  document.getElementById('expense-modal-title').textContent = 'Add Expense';
+  document.getElementById('btn-save-expense').innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 5v14M5 12h14"/></svg> Save Expense';
+  fillExpenseForm(expense, category);
+  PENDING_SHORTCUT_EXPENSE = null;
+
+  if (payload.autosave) {
+    void doAddExpense();
+    showToast(`Shortcut import detected for ${payload.merchant}`);
+    return;
+  }
+
+  openModal('modal-expense');
+  showToast(`Shortcut import ready: ${payload.merchant}`);
 }
 
 function selectType(t) {
@@ -2426,6 +3459,10 @@ async function deleteExpense(id) {
 
 /* START MONTH */
 function openStartModal() {
+  if (!STATE.access.canManageMonths) {
+    showToast('You do not have permission to manage months.', 'error');
+    return;
+  }
   const now = new Date();
   const key = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
   const inp = document.getElementById('sm-month');
@@ -2486,6 +3523,10 @@ function updateStartPreview() {
 }
 
 async function doStartMonth() {
+  if (!STATE.access.canManageMonths) {
+    showToast('You do not have permission to start a new month.', 'error');
+    return;
+  }
   const key   = document.getElementById('sm-month')?.value;
   const label = document.getElementById('sm-label')?.value?.trim();
   if (!key) { showToast('Please select a month','error'); return; }
@@ -2601,6 +3642,10 @@ function updateIncomePreview() {
 }
 
 function openIncomeModal(key) {
+  if (!STATE.access.canViewIncome) {
+    showToast('You do not have permission to view income.', 'error');
+    return;
+  }
   const k = key || getActiveKey();
   if (!k) { showToast('No month selected','error'); return; }
   const config = STATE.months[k] || {};
@@ -2626,6 +3671,10 @@ function openIncomeModal(key) {
 }
 
 async function doSaveIncome() {
+  if (!STATE.access.canManageMonths) {
+    showToast('You do not have permission to update income.', 'error');
+    return;
+  }
   const key = document.getElementById('income-month-key')?.value;
   if (!key) return;
   let income = 0, usd = 0, rate = 0;
@@ -2639,8 +3688,7 @@ async function doSaveIncome() {
   }
   if (!income) { showToast('Enter a salary amount','error'); return; }
   try {
-    const config = { ...(STATE.months[key] || {}), income, income_usd: usd||null, income_rate: rate||null };
-    await dbUpsertMonth(key, config);
+    await dbUpsertMonthIncome(key, income, usd||null, rate||null);
     closeModal('modal-income');
     const display = usd ? `$${usd.toLocaleString()} = ${income.toLocaleString('en-EG')} EGP` : `${income.toLocaleString('en-EG')} EGP`;
     showToast(`Salary saved — ${display}`);
@@ -2656,8 +3704,20 @@ function getIncomeMeta(key) {
   return null;
 }
 
+function requireWealthAccess() {
+  if (!STATE.access.canViewWealth) {
+    showToast('You do not have permission to access wealth data.', 'error');
+    return false;
+  }
+  return true;
+}
+
 /* SPECIAL BUDGET */
 async function doAddSpecialBudget() {
+  if (!STATE.access.canManageBudgets) {
+    showToast('You do not have permission to manage special budgets.', 'error');
+    return;
+  }
   const key  = document.getElementById('spec-month')?.value;
   const name = document.getElementById('spec-name')?.value?.trim();
   const amt  = parseFloat(document.getElementById('spec-amount')?.value);
@@ -2689,6 +3749,10 @@ async function doAddSpecialBudget() {
 }
 
 async function deleteSpecialBudget(monthKey, specId) {
+  if (!STATE.access.canManageBudgets) {
+    showToast('You do not have permission to manage special budgets.', 'error');
+    return;
+  }
   try {
     const config = {...STATE.months[monthKey]};
     config.specificBudgets = (config.specificBudgets||[]).filter(s=>s.id!==specId);
@@ -2735,6 +3799,7 @@ function fmtEGP(v) {
 }
 
 async function fetchWealthRates() {
+  if (!requireWealthAccess()) return;
   try {
     const res  = await fetch('https://open.er-api.com/v6/latest/USD');
     const data = await res.json();
@@ -2789,23 +3854,14 @@ function onCashCurrencyChange() {
   const cur = document.getElementById('wcash-currency')?.value;
   const rateGroup = document.getElementById('wcash-rate-group');
   if (!rateGroup) return;
-  if (cur === 'EGP') { rateGroup.style.display='none'; return; }
-  rateGroup.style.display = 'block';
-  const rate = getRate(cur);
-  if (rate) {
-    document.getElementById('wcash-rate').value = rate.toFixed(4);
-    document.getElementById('wcash-rate-hint').textContent = `Cached: 1 ${cur} = ${rate.toFixed(4)} EGP`;
-  } else {
-    document.getElementById('wcash-rate').value = '';
-    document.getElementById('wcash-rate-hint').textContent = 'Rate not cached — click Auto-fetch';
-  }
+  rateGroup.style.display = 'none';
   updateCashPreview();
 }
 
 function updateCashPreview() {
   const cur  = document.getElementById('wcash-currency')?.value;
   const amt  = parseFloat(document.getElementById('wcash-amount')?.value) || 0;
-  const rate = cur==='EGP' ? 1 : parseFloat(document.getElementById('wcash-rate')?.value) || 0;
+  const rate = cur==='EGP' ? 1 : getRate(cur) || 0;
   const prev = document.getElementById('wcash-preview');
   if (!prev) return;
   if (amt > 0 && rate > 0) {
@@ -2833,6 +3889,7 @@ function updateAssetPreview() {
 
 // ── CASH CRUD ──
 function openAddCash(id) {
+  if (!requireWealthAccess()) return;
   const el = id ? STATE.wealth.cash.find(c=>c.id===id) : null;
   document.getElementById('wcash-id').value    = id || '';
   document.getElementById('wcash-title').textContent = id ? 'Edit Cash' : 'Add Cash';
@@ -2841,17 +3898,17 @@ function openAddCash(id) {
   document.getElementById('wcash-notes').value    = el?.notes    || '';
   document.getElementById('wcash-preview').style.display = 'none';
   onCashCurrencyChange();
-  if (el?.rate) { document.getElementById('wcash-rate').value = el.rate; }
   updateCashPreview();
   openModal('modal-wealth-cash');
 }
 async function saveWealthCash() {
+  if (!requireWealthAccess()) return;
   const cur  = document.getElementById('wcash-currency').value;
   const amt  = parseFloat(document.getElementById('wcash-amount').value) || 0;
-  const rate = cur==='EGP' ? 1 : parseFloat(document.getElementById('wcash-rate').value) || 0;
+  const rate = cur==='EGP' ? 1 : getRate(cur) || 0;
   const notes= document.getElementById('wcash-notes').value.trim();
   if (!amt) { showToast('Enter an amount','error'); return; }
-  if (cur!=='EGP' && !rate) { showToast('Enter or fetch the rate','error'); return; }
+  if (cur!=='EGP' && !rate) { showToast(`Set the ${cur} rate in the Wealth header first`,'error'); return; }
   const id = document.getElementById('wcash-id').value || Date.now().toString();
   const row = { id, currency:cur, amount:amt, rate, notes };
   const { error } = await db.from('wealth_cash').upsert(row, { onConflict: 'id' });
@@ -2859,18 +3916,22 @@ async function saveWealthCash() {
   STATE.wealth.cash = [...STATE.wealth.cash.filter(c=>c.id!==id), row];
   closeModal('modal-wealth-cash');
   renderWealth();
+  if (_wealthDetailType === 'cash') renderWealthDetail();
   showToast('Cash saved');
 }
 async function deleteWealthCash(id) {
+  if (!requireWealthAccess()) return;
   if (!confirm('Remove this cash entry?')) return;
   const { error } = await db.from('wealth_cash').delete().eq('id', id);
   if (error) { showToast('Error: '+error.message,'error'); return; }
   STATE.wealth.cash = STATE.wealth.cash.filter(c=>c.id!==id);
   renderWealth();
+  if (_wealthDetailType === 'cash') renderWealthDetail();
 }
 
 // ── ASSET CRUD ──
 function openAddAsset(id) {
+  if (!requireWealthAccess()) return;
   const el = id ? STATE.wealth.assets.find(a=>a.id===id) : null;
   const type = el?.type || 'gold';
   document.getElementById('wasset-id').value   = id || '';
@@ -2891,6 +3952,7 @@ function openAddAsset(id) {
   openModal('modal-wealth-asset');
 }
 async function saveWealthAsset() {
+  if (!requireWealthAccess()) return;
   const type  = document.getElementById('wasset-type').value;
   const name  = document.getElementById('wasset-name').value.trim();
   const qty   = parseFloat(document.getElementById('wasset-qty').value) || 0;
@@ -2904,18 +3966,22 @@ async function saveWealthAsset() {
   STATE.wealth.assets = [...STATE.wealth.assets.filter(a=>a.id!==id), row];
   closeModal('modal-wealth-asset');
   renderWealth();
+  if (_wealthDetailType === 'assets') renderWealthDetail();
   showToast('Asset saved');
 }
 async function deleteWealthAsset(id) {
+  if (!requireWealthAccess()) return;
   if (!confirm('Remove this asset?')) return;
   const { error } = await db.from('wealth_assets').delete().eq('id', id);
   if (error) { showToast('Error: '+error.message,'error'); return; }
   STATE.wealth.assets = STATE.wealth.assets.filter(a=>a.id!==id);
   renderWealth();
+  if (_wealthDetailType === 'assets') renderWealthDetail();
 }
 
 // ── RECEIVABLES CRUD ──
 function openAddRecv(id) {
+  if (!requireWealthAccess()) return;
   const el = id ? STATE.wealth.receivables.find(r=>r.id===id) : null;
   document.getElementById('wrecv-id').value      = id || '';
   document.getElementById('wrecv-title').textContent = id ? 'Edit Receivable' : 'Add Receivable';
@@ -2926,6 +3992,7 @@ function openAddRecv(id) {
   openModal('modal-wealth-recv');
 }
 async function saveWealthRecv() {
+  if (!requireWealthAccess()) return;
   const person   = document.getElementById('wrecv-person').value.trim();
   const amount   = parseFloat(document.getElementById('wrecv-amount').value) || 0;
   const currency = document.getElementById('wrecv-currency').value;
@@ -2939,22 +4006,26 @@ async function saveWealthRecv() {
   STATE.wealth.receivables = [...STATE.wealth.receivables.filter(r=>r.id!==id), row];
   closeModal('modal-wealth-recv');
   renderWealth();
+  if (_wealthDetailType === 'receivables') renderWealthDetail();
   showToast('Receivable saved');
 }
 async function deleteWealthRecv(id) {
+  if (!requireWealthAccess()) return;
   if (!confirm('Remove this receivable?')) return;
   const { error } = await db.from('wealth_receivables').delete().eq('id', id);
   if (error) { showToast('Error: '+error.message,'error'); return; }
   STATE.wealth.receivables = STATE.wealth.receivables.filter(r=>r.id!==id);
   renderWealth();
+  if (_wealthDetailType === 'receivables') renderWealthDetail();
 }
 
 // ── SNAPSHOT ──
 async function saveWealthSnapshot() {
+  if (!requireWealthAccess()) return;
   const cashRows  = STATE.wealth.cash;
   const assetRows = STATE.wealth.assets;
   const recvRows  = STATE.wealth.receivables;
-  const cashEgp   = cashRows.reduce((s,c)=>s+(c.currency==='EGP'?c.amount:c.amount*(c.rate||0)),0);
+  const cashEgp   = cashRows.reduce((s,c)=>s+(c.currency==='EGP'?c.amount:c.amount*((getRate(c.currency) || c.rate || 0))),0);
   const assetsEgp = assetRows.reduce((s,a)=>s+a.qty*a.price,0);
   const recvEgp   = recvRows.reduce((s,r)=>s+(toEGP(r.amount,r.currency)||0),0);
   const netEgp    = cashEgp + assetsEgp + recvEgp;
@@ -2980,13 +4051,420 @@ async function saveWealthSnapshot() {
   renderWealth();
 }
 
+let _wealthDetailType = null;
+let _wealthDetailEditingId = null;
+let _wealthDetailDraft = null;
+let _editingRateCode = null;
+let _editingRateValue = '';
+
+function escAttr(v='') {
+  return String(v)
+    .replace(/&/g, '&amp;')
+    .replace(/"/g, '&quot;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;');
+}
+
+function getStoredRateDate() {
+  return localStorage.getItem('usd_egp_rate_date') || '?';
+}
+
+function setRate(cur, value) {
+  const num = parseFloat(value);
+  if (!num || num <= 0) return false;
+  if (cur === 'USD') localStorage.setItem('usd_egp_rate', num);
+  if (cur === 'CHF') localStorage.setItem('chf_egp_rate', num);
+  if (cur === 'EUR') localStorage.setItem('eur_egp_rate', num);
+  if (cur === 'GBP') localStorage.setItem('gbp_egp_rate', num);
+  localStorage.setItem('usd_egp_rate_date', new Date().toLocaleDateString('en-EG'));
+  return true;
+}
+
+function beginRateEdit(cur) {
+  _editingRateCode = cur;
+  _editingRateValue = getRate(cur)?.toFixed(2) || '';
+  renderWealth();
+}
+
+function cancelRateEdit() {
+  _editingRateCode = null;
+  _editingRateValue = '';
+  renderWealth();
+}
+
+function updateRateDraft(value) {
+  _editingRateValue = value;
+}
+
+function saveRateEdit() {
+  if (!_editingRateCode) return;
+  if (!setRate(_editingRateCode, _editingRateValue)) {
+    showToast('Enter a valid rate', 'error');
+    return;
+  }
+  _editingRateCode = null;
+  _editingRateValue = '';
+  renderWealth();
+  if (_wealthDetailType === 'cash') renderWealthDetail();
+  showToast('Rate updated');
+}
+
+function getWealthDetailConfig(type) {
+  const configs = {
+    cash: {
+      title: 'Cash Positions',
+      subtitle: 'Manage each currency position without scanning a full table.',
+      addLabel: '+ Add Currency',
+      addAction: 'openAddCash()',
+      accent: 'var(--amber)'
+    },
+    assets: {
+      title: 'Asset Positions',
+      subtitle: 'Track gold, equities, crypto, property, and any custom holdings.',
+      addLabel: '+ Add Asset',
+      addAction: 'openAddAsset()',
+      accent: 'var(--green)'
+    },
+    receivables: {
+      title: 'Receivables',
+      subtitle: 'Track money owed to you and keep each relationship updated cleanly.',
+      addLabel: '+ Add Receivable',
+      addAction: 'openAddRecv()',
+      accent: 'var(--blue)'
+    }
+  };
+  return configs[type];
+}
+
+function openWealthDetail(type) {
+  if (!requireWealthAccess()) return;
+  _wealthDetailType = type;
+  _wealthDetailEditingId = null;
+  _wealthDetailDraft = null;
+  renderWealthDetail();
+  openModal('modal-wealth-detail');
+}
+
+function startWealthInlineEdit(type, id = null) {
+  _wealthDetailType = type;
+  _wealthDetailEditingId = id || '__new__';
+  if (type === 'cash') {
+    const row = id ? STATE.wealth.cash.find(c => c.id === id) : null;
+    _wealthDetailDraft = {
+      id: row?.id || '',
+      currency: row?.currency || 'USD',
+      amount: row?.amount || '',
+      notes: row?.notes || ''
+    };
+  } else if (type === 'assets') {
+    const row = id ? STATE.wealth.assets.find(a => a.id === id) : null;
+    _wealthDetailDraft = {
+      id: row?.id || '',
+      type: row?.type || 'gold',
+      name: row?.name || '',
+      qty: row?.qty || '',
+      price: row?.price || ''
+    };
+  } else {
+    const row = id ? STATE.wealth.receivables.find(r => r.id === id) : null;
+    _wealthDetailDraft = {
+      id: row?.id || '',
+      person: row?.person || '',
+      amount: row?.amount || '',
+      currency: row?.currency || 'EGP',
+      notes: row?.notes || ''
+    };
+  }
+  renderWealthDetail();
+}
+
+function cancelWealthInlineEdit() {
+  _wealthDetailEditingId = null;
+  _wealthDetailDraft = null;
+  renderWealthDetail();
+}
+
+function setWealthDraftField(field, value) {
+  if (!_wealthDetailDraft) return;
+  _wealthDetailDraft[field] = value;
+  renderWealthDetail();
+}
+
+async function saveWealthInlineEdit() {
+  if (!requireWealthAccess() || !_wealthDetailType || !_wealthDetailDraft) return;
+  if (_wealthDetailType === 'cash') {
+    const cur = _wealthDetailDraft.currency;
+    const amt = parseFloat(_wealthDetailDraft.amount) || 0;
+    const rate = cur === 'EGP' ? 1 : getRate(cur) || 0;
+    const notes = (_wealthDetailDraft.notes || '').trim();
+    if (!amt) { showToast('Enter an amount', 'error'); return; }
+    if (cur !== 'EGP' && !rate) { showToast(`Set the ${cur} rate in the Wealth header first`, 'error'); return; }
+    const id = _wealthDetailDraft.id || Date.now().toString();
+    const row = { id, currency: cur, amount: amt, rate, notes };
+    const { error } = await db.from('wealth_cash').upsert(row, { onConflict: 'id' });
+    if (error) { showToast('Error: ' + error.message, 'error'); return; }
+    STATE.wealth.cash = [...STATE.wealth.cash.filter(c => c.id !== id), row];
+  } else if (_wealthDetailType === 'assets') {
+    const type = _wealthDetailDraft.type;
+    const name = (_wealthDetailDraft.name || '').trim();
+    const qty = parseFloat(_wealthDetailDraft.qty) || 0;
+    const price = parseFloat(_wealthDetailDraft.price) || 0;
+    if (!name) { showToast('Enter a name', 'error'); return; }
+    if (!qty || !price) { showToast('Enter quantity and price', 'error'); return; }
+    const id = _wealthDetailDraft.id || Date.now().toString();
+    const row = { id, type, name, qty, price };
+    const { error } = await db.from('wealth_assets').upsert(row, { onConflict: 'id' });
+    if (error) { showToast('Error: ' + error.message, 'error'); return; }
+    STATE.wealth.assets = [...STATE.wealth.assets.filter(a => a.id !== id), row];
+  } else {
+    const person = (_wealthDetailDraft.person || '').trim();
+    const amount = parseFloat(_wealthDetailDraft.amount) || 0;
+    const currency = _wealthDetailDraft.currency;
+    const notes = (_wealthDetailDraft.notes || '').trim();
+    if (!person) { showToast('Enter a person name', 'error'); return; }
+    if (!amount) { showToast('Enter an amount', 'error'); return; }
+    const id = _wealthDetailDraft.id || Date.now().toString();
+    const row = { id, person, amount, currency, notes };
+    const { error } = await db.from('wealth_receivables').upsert(row, { onConflict: 'id' });
+    if (error) { showToast('Error: ' + error.message, 'error'); return; }
+    STATE.wealth.receivables = [...STATE.wealth.receivables.filter(r => r.id !== id), row];
+  }
+  _wealthDetailEditingId = null;
+  _wealthDetailDraft = null;
+  renderWealth();
+  renderWealthDetail();
+  showToast('Saved');
+}
+
+function renderCashInlineEditor() {
+  const d = _wealthDetailDraft || {};
+  const cur = d.currency || 'USD';
+  const amount = parseFloat(d.amount) || 0;
+  const rate = cur === 'EGP' ? 1 : getRate(cur) || 0;
+  const egp = amount && rate ? amount * rate : null;
+  return `
+    <div class="wealth-inline-grid">
+      <div class="form-group"><label class="form-label">Currency</label><select class="form-select" onchange="setWealthDraftField('currency', this.value)"><option value="USD"${cur==='USD'?' selected':''}>USD</option><option value="CHF"${cur==='CHF'?' selected':''}>CHF</option><option value="EUR"${cur==='EUR'?' selected':''}>EUR</option><option value="GBP"${cur==='GBP'?' selected':''}>GBP</option><option value="EGP"${cur==='EGP'?' selected':''}>EGP</option></select></div>
+      <div class="form-group"><label class="form-label">Amount</label><input class="form-input" type="number" min="0" step="0.01" value="${escAttr(d.amount)}" oninput="setWealthDraftField('amount', this.value)"></div>
+      <div class="form-group"><label class="form-label">Rate Source</label><div class="form-input" style="display:flex;align-items:center">${cur==='EGP' ? '1.0000' : (rate ? `${rate.toFixed(2)} EGP` : 'Set in header')}</div></div>
+      <div class="form-group"><label class="form-label">Note</label><input class="form-input" type="text" value="${escAttr(d.notes)}" oninput="setWealthDraftField('notes', this.value)"></div>
+    </div>
+    <div class="wealth-detail-item-metrics">
+      ${egp ? `<div class="wealth-pill">Calculated <strong>${fmtEGP(egp)}</strong></div>` : `<div class="wealth-pill">Calculated <strong>—</strong></div>`}
+      ${egp ? `<div class="wealth-pill">USD <strong>${fmtUSD(toUSD(egp),0)}</strong></div>` : ''}
+    </div>`;
+}
+
+function renderAssetInlineEditor() {
+  const d = _wealthDetailDraft || {};
+  const qty = parseFloat(d.qty) || 0;
+  const price = parseFloat(d.price) || 0;
+  const egp = qty && price ? qty * price : null;
+  return `
+    <div class="wealth-inline-grid">
+      <div class="form-group"><label class="form-label">Type</label><select class="form-select" onchange="setWealthDraftField('type', this.value)"><option value="gold"${d.type==='gold'?' selected':''}>Gold</option><option value="stocks"${d.type==='stocks'?' selected':''}>Stocks</option><option value="crypto"${d.type==='crypto'?' selected':''}>Crypto</option><option value="property"${d.type==='property'?' selected':''}>Property</option><option value="other"${d.type==='other'?' selected':''}>Other</option></select></div>
+      <div class="form-group"><label class="form-label">Name</label><input class="form-input" type="text" value="${escAttr(d.name)}" oninput="setWealthDraftField('name', this.value)"></div>
+      <div class="form-group"><label class="form-label">Qty</label><input class="form-input" type="number" min="0" step="0.001" value="${escAttr(d.qty)}" oninput="setWealthDraftField('qty', this.value)"></div>
+      <div class="form-group"><label class="form-label">Price / Unit</label><input class="form-input" type="number" min="0" step="0.01" value="${escAttr(d.price)}" oninput="setWealthDraftField('price', this.value)"></div>
+    </div>
+    <div class="wealth-detail-item-metrics">
+      ${egp ? `<div class="wealth-pill">Calculated <strong>${fmtEGP(egp)}</strong></div>` : `<div class="wealth-pill">Calculated <strong>—</strong></div>`}
+      ${egp ? `<div class="wealth-pill">USD <strong>${fmtUSD(toUSD(egp),0)}</strong></div>` : ''}
+    </div>`;
+}
+
+function renderRecvInlineEditor() {
+  const d = _wealthDetailDraft || {};
+  const amount = parseFloat(d.amount) || 0;
+  const egp = amount ? (toEGP(amount, d.currency) || amount) : null;
+  return `
+    <div class="wealth-inline-grid">
+      <div class="form-group"><label class="form-label">Person</label><input class="form-input" type="text" value="${escAttr(d.person)}" oninput="setWealthDraftField('person', this.value)"></div>
+      <div class="form-group"><label class="form-label">Amount</label><input class="form-input" type="number" min="0" step="0.01" value="${escAttr(d.amount)}" oninput="setWealthDraftField('amount', this.value)"></div>
+      <div class="form-group"><label class="form-label">Currency</label><select class="form-select" onchange="setWealthDraftField('currency', this.value)"><option value="EGP"${d.currency==='EGP'?' selected':''}>EGP</option><option value="USD"${d.currency==='USD'?' selected':''}>USD</option><option value="CHF"${d.currency==='CHF'?' selected':''}>CHF</option></select></div>
+      <div class="form-group"><label class="form-label">Note</label><input class="form-input" type="text" value="${escAttr(d.notes)}" oninput="setWealthDraftField('notes', this.value)"></div>
+    </div>
+    <div class="wealth-detail-item-metrics">
+      ${egp ? `<div class="wealth-pill">Calculated <strong>${fmtEGP(egp)}</strong></div>` : `<div class="wealth-pill">Calculated <strong>—</strong></div>`}
+      ${egp ? `<div class="wealth-pill">USD <strong>${fmtUSD(toUSD(egp),0)}</strong></div>` : ''}
+    </div>`;
+}
+
+function renderWealthDetail() {
+  const type = _wealthDetailType;
+  const body = document.getElementById('wealth-detail-body');
+  const title = document.getElementById('wealth-detail-title');
+  const sub = document.getElementById('wealth-detail-sub');
+  const addBtn = document.getElementById('wealth-detail-add-btn');
+  const cfg = getWealthDetailConfig(type);
+  if (!body || !title || !sub || !addBtn || !cfg) return;
+
+  title.textContent = cfg.title;
+  sub.textContent = cfg.subtitle;
+  addBtn.textContent = cfg.addLabel;
+  addBtn.setAttribute('onclick', `startWealthInlineEdit('${type}')`);
+
+  if (type === 'cash') {
+    const rows = STATE.wealth.cash.slice().sort((a, b) => (b.currency === 'EGP') - (a.currency === 'EGP') || a.currency.localeCompare(b.currency));
+    const totalEgp = rows.reduce((s, c) => s + (c.currency === 'EGP' ? c.amount : c.amount * c.rate), 0);
+    const totalUsd = toUSD(totalEgp);
+    body.innerHTML = `
+      <div class="wealth-detail-kpi">
+        <div class="wealth-detail-kpi-card"><div class="label">Total EGP</div><div class="value" style="color:${cfg.accent}">${fmtEGP(totalEgp)}</div></div>
+        <div class="wealth-detail-kpi-card"><div class="label">Total USD</div><div class="value">${fmtUSD(totalUsd,0)}</div></div>
+        <div class="wealth-detail-kpi-card"><div class="label">Currencies</div><div class="value">${rows.length}</div></div>
+      </div>
+      <div class="wealth-detail-list">
+        ${rows.length ? rows.map(c => {
+          const liveRate = c.currency === 'EGP' ? 1 : getRate(c.currency) || c.rate || 0;
+          const egp = c.currency === 'EGP' ? c.amount : c.amount * liveRate;
+          const usd = toUSD(egp);
+          const editing = _wealthDetailEditingId === c.id;
+          return `<div class="wealth-detail-item">
+            <div class="wealth-detail-item-top">
+              <div>
+                <div class="wealth-detail-item-title">${c.currency}</div>
+                <div class="wealth-detail-item-sub">${c.notes || 'No note added'}</div>
+              </div>
+              <div class="wealth-item-actions">
+                ${editing ? '' : `<button class="btn btn-ghost btn-sm" onclick="startWealthInlineEdit('cash','${c.id}')">Edit</button>`}
+                <button class="btn btn-ghost btn-sm" onclick="deleteWealthCash('${c.id}')">Delete</button>
+              </div>
+            </div>
+            ${editing ? `${renderCashInlineEditor()}
+            <div class="wealth-inline-actions">
+              <button class="btn btn-primary btn-sm" onclick="saveWealthInlineEdit()">Save</button>
+              <button class="btn btn-ghost btn-sm" onclick="cancelWealthInlineEdit()">Cancel</button>
+            </div>` : `<div class="wealth-detail-item-metrics">
+              <div class="wealth-pill">Amount <strong>${c.amount.toLocaleString(undefined,{maximumFractionDigits:2})}</strong></div>
+              <div class="wealth-pill">Rate <strong>${c.currency === 'EGP' ? '1.0000' : liveRate.toFixed(2)}</strong></div>
+              <div class="wealth-pill">EGP <strong>${fmtEGP(egp)}</strong></div>
+              <div class="wealth-pill">USD <strong>${fmtUSD(usd,0)}</strong></div>
+            </div>`}
+          </div>`;
+        }).join('') : `<div class="empty-state"><p>No cash positions yet.</p></div>`}
+        ${_wealthDetailEditingId === '__new__' ? `<div class="wealth-detail-item">
+          <div class="wealth-detail-item-title">New cash position</div>
+          ${renderCashInlineEditor()}
+          <div class="wealth-inline-actions">
+            <button class="btn btn-primary btn-sm" onclick="saveWealthInlineEdit()">Save</button>
+            <button class="btn btn-ghost btn-sm" onclick="cancelWealthInlineEdit()">Cancel</button>
+          </div>
+        </div>` : ''}
+      </div>`;
+    return;
+  }
+
+  if (type === 'assets') {
+    const rows = STATE.wealth.assets.slice().sort((a, b) => (b.qty * b.price) - (a.qty * a.price));
+    const totalEgp = rows.reduce((s, a) => s + a.qty * a.price, 0);
+    const totalUsd = toUSD(totalEgp);
+    body.innerHTML = `
+      <div class="wealth-detail-kpi">
+        <div class="wealth-detail-kpi-card"><div class="label">Total EGP</div><div class="value" style="color:${cfg.accent}">${fmtEGP(totalEgp)}</div></div>
+        <div class="wealth-detail-kpi-card"><div class="label">Total USD</div><div class="value">${fmtUSD(totalUsd,0)}</div></div>
+        <div class="wealth-detail-kpi-card"><div class="label">Positions</div><div class="value">${rows.length}</div></div>
+      </div>
+      <div class="wealth-detail-list">
+        ${rows.length ? rows.map(a => {
+          const egp = a.qty * a.price;
+          const usd = toUSD(egp);
+          const typeIcon = {gold:'🥇',stocks:'📈',crypto:'₿',property:'🏠',other:'📦'}[a.type] || '📦';
+          const editing = _wealthDetailEditingId === a.id;
+          return `<div class="wealth-detail-item">
+            <div class="wealth-detail-item-top">
+              <div>
+                <div class="wealth-detail-item-title">${typeIcon} ${a.name}</div>
+                <div class="wealth-detail-item-sub">${a.type}</div>
+              </div>
+              <div class="wealth-item-actions">
+                ${editing ? '' : `<button class="btn btn-ghost btn-sm" onclick="startWealthInlineEdit('assets','${a.id}')">Edit</button>`}
+                <button class="btn btn-ghost btn-sm" onclick="deleteWealthAsset('${a.id}')">Delete</button>
+              </div>
+            </div>
+            ${editing ? `${renderAssetInlineEditor()}
+            <div class="wealth-inline-actions">
+              <button class="btn btn-primary btn-sm" onclick="saveWealthInlineEdit()">Save</button>
+              <button class="btn btn-ghost btn-sm" onclick="cancelWealthInlineEdit()">Cancel</button>
+            </div>` : `<div class="wealth-detail-item-metrics">
+              <div class="wealth-pill">Qty <strong>${a.qty.toLocaleString(undefined,{maximumFractionDigits:3})}</strong></div>
+              <div class="wealth-pill">Price <strong>${a.price.toLocaleString('en-EG',{maximumFractionDigits:0})}</strong></div>
+              <div class="wealth-pill">EGP <strong>${fmtEGP(egp)}</strong></div>
+              <div class="wealth-pill">USD <strong>${fmtUSD(usd,0)}</strong></div>
+            </div>`}
+          </div>`;
+        }).join('') : `<div class="empty-state"><p>No asset positions yet.</p></div>`}
+        ${_wealthDetailEditingId === '__new__' ? `<div class="wealth-detail-item">
+          <div class="wealth-detail-item-title">New asset position</div>
+          ${renderAssetInlineEditor()}
+          <div class="wealth-inline-actions">
+            <button class="btn btn-primary btn-sm" onclick="saveWealthInlineEdit()">Save</button>
+            <button class="btn btn-ghost btn-sm" onclick="cancelWealthInlineEdit()">Cancel</button>
+          </div>
+        </div>` : ''}
+      </div>`;
+    return;
+  }
+
+  const rows = STATE.wealth.receivables.slice().sort((a, b) => b.amount - a.amount);
+  const totalEgp = rows.reduce((s, r) => s + (toEGP(r.amount, r.currency) || 0), 0);
+  const totalUsd = toUSD(totalEgp);
+  body.innerHTML = `
+    <div class="wealth-detail-kpi">
+      <div class="wealth-detail-kpi-card"><div class="label">Total EGP</div><div class="value" style="color:${cfg.accent}">${fmtEGP(totalEgp)}</div></div>
+      <div class="wealth-detail-kpi-card"><div class="label">Total USD</div><div class="value">${fmtUSD(totalUsd,0)}</div></div>
+      <div class="wealth-detail-kpi-card"><div class="label">People / Entities</div><div class="value">${rows.length}</div></div>
+    </div>
+    <div class="wealth-detail-list">
+      ${rows.length ? rows.map(r => {
+        const egp = toEGP(r.amount, r.currency) || r.amount;
+        const usd = toUSD(egp);
+        const editing = _wealthDetailEditingId === r.id;
+        return `<div class="wealth-detail-item">
+          <div class="wealth-detail-item-top">
+            <div>
+              <div class="wealth-detail-item-title">${r.person}</div>
+              <div class="wealth-detail-item-sub">${r.notes || 'No note added'}</div>
+            </div>
+            <div class="wealth-item-actions">
+              ${editing ? '' : `<button class="btn btn-ghost btn-sm" onclick="startWealthInlineEdit('receivables','${r.id}')">Edit</button>`}
+              <button class="btn btn-ghost btn-sm" onclick="deleteWealthRecv('${r.id}')">Delete</button>
+            </div>
+          </div>
+          ${editing ? `${renderRecvInlineEditor()}
+          <div class="wealth-inline-actions">
+            <button class="btn btn-primary btn-sm" onclick="saveWealthInlineEdit()">Save</button>
+            <button class="btn btn-ghost btn-sm" onclick="cancelWealthInlineEdit()">Cancel</button>
+          </div>` : `<div class="wealth-detail-item-metrics">
+            <div class="wealth-pill">Amount <strong>${r.amount.toLocaleString(undefined,{maximumFractionDigits:0})} ${r.currency}</strong></div>
+            <div class="wealth-pill">EGP <strong>${fmtEGP(egp)}</strong></div>
+            <div class="wealth-pill">USD <strong>${fmtUSD(usd,0)}</strong></div>
+          </div>`}
+        </div>`;
+      }).join('') : `<div class="empty-state"><p>No receivables yet.</p></div>`}
+      ${_wealthDetailEditingId === '__new__' ? `<div class="wealth-detail-item">
+        <div class="wealth-detail-item-title">New receivable</div>
+        ${renderRecvInlineEditor()}
+        <div class="wealth-inline-actions">
+          <button class="btn btn-primary btn-sm" onclick="saveWealthInlineEdit()">Save</button>
+          <button class="btn btn-ghost btn-sm" onclick="cancelWealthInlineEdit()">Cancel</button>
+        </div>
+      </div>` : ''}
+    </div>`;
+}
+
 // ── MAIN RENDER ──
 function renderWealth() {
+  if (!STATE.access.canViewWealth) {
+    const host = document.getElementById('wealth-content');
+    if (host) host.innerHTML = `<div class="empty-state"><p>You do not have permission to view wealth data.</p></div>`;
+    return;
+  }
   const container = document.getElementById('wealth-content');
   if (!container) return;
 
   const usdRate  = parseFloat(localStorage.getItem('usd_egp_rate')) || null;
-  const rateDate = localStorage.getItem('usd_egp_rate_date') || '?';
+  const rateDate = getStoredRateDate();
 
   // Current month summary
   const activeKey = getActiveKey();
@@ -3008,7 +4486,7 @@ function renderWealth() {
 
   // Cash totals
   const cashRows = STATE.wealth.cash;
-  const cashTotalEgp = cashRows.reduce((s,c)=>{ const e=c.currency==='EGP'?c.amount:c.amount*c.rate; return s+(e||0); }, 0);
+  const cashTotalEgp = cashRows.reduce((s,c)=>{ const e=c.currency==='EGP'?c.amount:c.amount*(getRate(c.currency) || c.rate || 0); return s+(e||0); }, 0);
   const cashTotalUsd = toUSD(cashTotalEgp);
 
   // Asset totals
@@ -3046,7 +4524,7 @@ function renderWealth() {
     cashRows.forEach(c => {
       if (c.currency === 'EGP') return;
       const prevRate = prevSnap.rates?.[c.currency];
-      const currRate = c.rate || getRate(c.currency);
+      const currRate = getRate(c.currency) || c.rate;
       if (prevRate && currRate && c.amount) {
         const impact = c.amount * (currRate - prevRate);
         if (Math.abs(impact) > 1) drivers.push({ label: c.currency, impact, detail: `${c.amount.toLocaleString()} ${c.currency} × (${currRate.toFixed(2)} − ${prevRate.toFixed(2)})` });
@@ -3084,9 +4562,20 @@ function renderWealth() {
           <button class="btn btn-ghost btn-sm" onclick="saveWealthSnapshot()" title="Save snapshot for this month" style="border-color:var(--amber);color:var(--amber)">📸 Snapshot</button>
         </div>
         <div style="display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end">
-          ${['USD','CHF','EUR','GBP'].map(c=>{const r=getRate(c);return r?`<div class="rate-badge"><span style="color:var(--muted);font-size:0.7rem">${c}</span> <strong>${r.toFixed(2)}</strong></div>`:''}).join('')}
+          ${['USD','CHF','EUR','GBP'].map(c=>{
+            const r=getRate(c);
+            if (!r && _editingRateCode !== c) return '';
+            return _editingRateCode === c
+              ? `<div class="rate-badge editing">
+                  <span style="color:var(--muted);font-size:0.7rem">${c}</span>
+                  <input class="rate-inline-input" type="number" step="0.01" min="0" value="${escAttr(_editingRateValue)}" oninput="updateRateDraft(this.value)">
+                  <button class="btn btn-ghost btn-sm" onclick="saveRateEdit()">Save</button>
+                  <button class="btn btn-ghost btn-sm" onclick="cancelRateEdit()">Cancel</button>
+                </div>`
+              : `<div class="rate-badge" onclick="beginRateEdit('${c}')"><span style="color:var(--muted);font-size:0.7rem">${c}</span> <strong>${r.toFixed(2)}</strong></div>`;
+          }).join('')}
         </div>
-        ${usdRate?`<div style="font-size:0.65rem;color:var(--muted)">Updated ${rateDate}</div>`:''}
+        ${(usdRate || getRate('CHF') || getRate('EUR') || getRate('GBP')) ? `<div style="font-size:0.65rem;color:var(--muted)">Updated ${rateDate} · tap a rate to edit inline</div>` : ''}
       </div>
     </div>
 
@@ -3128,15 +4617,15 @@ function renderWealth() {
     <!-- Three breakdown cards -->
     <div class="wealth-breakdown" style="margin-top:0">
       ${[
-        {label:'💵 Cash',       egp:cashTotalEgp,  usd:cashTotalUsd,  color:'var(--amber)', pct:cashPct,  onclick:"document.getElementById('wealth-cash-section').scrollIntoView({behavior:'smooth'})"},
-        {label:'🏅 Assets',     egp:assetTotalEgp, usd:assetTotalUsd, color:'var(--green)',  pct:assetPct, onclick:"document.getElementById('wealth-asset-section').scrollIntoView({behavior:'smooth'})"},
-        {label:'🤝 Receivables',egp:recvTotalEgp,  usd:recvTotalUsd,  color:'var(--blue)',  pct:recvPct,  onclick:"document.getElementById('wealth-recv-section').scrollIntoView({behavior:'smooth'})"},
+        {label:'💵 Cash',       egp:cashTotalEgp,  usd:cashTotalUsd,  color:'var(--amber)', pct:cashPct,  onclick:"openWealthDetail('cash')"},
+        {label:'🏅 Assets',     egp:assetTotalEgp, usd:assetTotalUsd, color:'var(--green)',  pct:assetPct, onclick:"openWealthDetail('assets')"},
+        {label:'🤝 Receivables',egp:recvTotalEgp,  usd:recvTotalUsd,  color:'var(--blue)',  pct:recvPct,  onclick:"openWealthDetail('receivables')"},
       ].map(s=>`
       <div class="wealth-breakdown-item" onclick="${s.onclick}" style="cursor:pointer;transition:border-color .15s" onmouseover="this.style.borderColor=\'${s.color}\'" onmouseout="this.style.borderColor=\'\'">
         <div class="wealth-breakdown-label">${s.label}</div>
         <div class="wealth-breakdown-val private-val" style="color:${s.color}">${s.usd?fmtUSD(s.usd,0):fmtEGP(s.egp)}</div>
         ${s.usd?`<div class="private-val" style="font-size:0.72rem;color:var(--muted)">${fmtEGP(s.egp)}</div>`:''}
-        <div class="private-val" style="font-size:0.68rem;color:var(--muted);margin-top:4px">${s.pct}% of total</div>
+        <div class="private-val" style="font-size:0.68rem;color:var(--muted);margin-top:4px">${s.pct}% of total · Tap to manage</div>
       </div>`).join('')}
     </div>
   </div>
@@ -3148,108 +4637,16 @@ function renderWealth() {
     <div style="position:relative;height:200px"><canvas id="wealth-chart"></canvas></div>
   </div>` : ''}
 
-  <!-- ② Cash Holdings -->
-  <div class="wealth-section" id="wealth-cash-section">
-    <div class="wealth-section-header">
-      <div class="section-title" style="margin:0">💵 Cash Holdings</div>
-      <button class="btn btn-primary btn-sm" onclick="openAddCash()">+ Add Currency</button>
+  <div class="wealth-launch-note">
+    <div>
+      <div style="font-size:0.76rem;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin-bottom:4px">Focused Wealth Editing</div>
+      <div style="font-size:0.9rem;color:var(--text)">Use the Cash, Assets, and Receivables cards above to open a cleaner detail view and update each item there.</div>
     </div>
-    ${cashRows.length ? `
-    <div class="wealth-table-wrap">
-      <table>
-        <thead><tr><th>Currency</th><th>Amount</th><th>Rate (→ EGP)</th><th>Value (EGP)</th><th>Value (USD)</th><th></th></tr></thead>
-        <tbody>
-          ${cashRows.map(c=>{
-            const egp = c.currency==='EGP' ? c.amount : c.amount * c.rate;
-            const usd = toUSD(egp);
-            return `<tr>
-              <td><strong>${c.currency}</strong>${c.notes?`<div style="font-size:0.72rem;color:var(--muted)">${c.notes}</div>`:''}
-              <td>${c.amount.toLocaleString(undefined,{maximumFractionDigits:2})}</td>
-              <td>${c.currency==='EGP'?'1':c.rate?c.rate.toFixed(4):'—'}</td>
-              <td style="font-weight:600;color:var(--amber)">${fmtEGP(egp)}</td>
-              <td style="color:var(--muted)">${fmtUSD(usd,0)}</td>
-              <td><div style="display:flex;gap:4px">${actionBtn('Edit','✏️',`openAddCash('${c.id}')`)}${actionBtn('Delete','🗑️',`deleteWealthCash('${c.id}')`)}</div></td>
-            </tr>`;
-          }).join('')}
-          <tr class="total-row">
-            <td colspan="3">Total</td>
-            <td style="color:var(--amber)">${fmtEGP(cashTotalEgp)}</td>
-            <td>${fmtUSD(cashTotalUsd,0)}</td>
-            <td></td>
-          </tr>
-        </tbody>
-      </table>
-    </div>` : `<div style="color:var(--muted);font-size:0.85rem;padding:10px 0">No cash entries yet. Add your USD, CHF, EGP holdings.</div>`}
-  </div>
-
-  <!-- ③ Assets: Gold & Stocks -->
-  <div class="wealth-section" id="wealth-asset-section">
-    <div class="wealth-section-header">
-      <div class="section-title" style="margin:0">🏅 Assets</div>
-      <button class="btn btn-primary btn-sm" onclick="openAddAsset()">+ Add Asset</button>
+    <div style="display:flex;gap:8px;flex-wrap:wrap">
+      <button class="btn btn-ghost btn-sm" onclick="openWealthDetail('cash')">Open Cash</button>
+      <button class="btn btn-ghost btn-sm" onclick="openWealthDetail('assets')">Open Assets</button>
+      <button class="btn btn-ghost btn-sm" onclick="openWealthDetail('receivables')">Open Receivables</button>
     </div>
-    ${assetRows.length ? `
-    <div class="wealth-table-wrap">
-      <table>
-        <thead><tr><th>Asset</th><th>Qty / Units</th><th>Price/unit (EGP)</th><th>Total (EGP)</th><th>Total (USD)</th><th></th></tr></thead>
-        <tbody>
-          ${assetRows.map(a=>{
-            const egp = a.qty * a.price;
-            const usd = toUSD(egp);
-            const typeIcon = {gold:'🥇',stocks:'📈',crypto:'₿',property:'🏠',other:'📦'}[a.type]||'📦';
-            return `<tr>
-              <td>${typeIcon} <strong>${a.name}</strong></td>
-              <td>${a.qty.toLocaleString(undefined,{maximumFractionDigits:3})}</td>
-              <td>${a.price.toLocaleString('en-EG',{maximumFractionDigits:0})}</td>
-              <td style="font-weight:600;color:var(--amber)">${fmtEGP(egp)}</td>
-              <td style="color:var(--muted)">${fmtUSD(usd,0)}</td>
-              <td><div style="display:flex;gap:4px">${actionBtn('Edit','✏️',`openAddAsset('${a.id}')`)}${actionBtn('Delete','🗑️',`deleteWealthAsset('${a.id}')`)}</div></td>
-            </tr>`;
-          }).join('')}
-          <tr class="total-row">
-            <td colspan="3">Total</td>
-            <td style="color:var(--amber)">${fmtEGP(assetTotalEgp)}</td>
-            <td>${fmtUSD(assetTotalUsd,0)}</td>
-            <td></td>
-          </tr>
-        </tbody>
-      </table>
-    </div>` : `<div style="color:var(--muted);font-size:0.85rem;padding:10px 0">No assets yet. Add gold, stocks, crypto or property.</div>`}
-  </div>
-
-  <!-- ④ Receivables -->
-  <div class="wealth-section" id="wealth-recv-section">
-    <div class="wealth-section-header">
-      <div class="section-title" style="margin:0">🤝 Money Lent (Receivables)</div>
-      <button class="btn btn-primary btn-sm" onclick="openAddRecv()">+ Add</button>
-    </div>
-    ${recvRows.length ? `
-    <div class="wealth-table-wrap">
-      <table>
-        <thead><tr><th>Person</th><th>Amount</th><th>Currency</th><th>Value (EGP)</th><th>Value (USD)</th><th>Notes</th><th></th></tr></thead>
-        <tbody>
-          ${recvRows.map(r=>{
-            const egp = toEGP(r.amount, r.currency) || r.amount;
-            const usd = toUSD(egp);
-            return `<tr>
-              <td><strong>${r.person}</strong></td>
-              <td>${r.amount.toLocaleString(undefined,{maximumFractionDigits:0})}</td>
-              <td>${r.currency}</td>
-              <td style="font-weight:600;color:var(--blue)">${fmtEGP(egp)}</td>
-              <td style="color:var(--muted)">${fmtUSD(usd,0)}</td>
-              <td style="color:var(--muted);font-size:0.8rem">${r.notes||'—'}</td>
-              <td><div style="display:flex;gap:4px">${actionBtn('Edit','✏️',`openAddRecv('${r.id}')`)}${actionBtn('Delete','🗑️',`deleteWealthRecv('${r.id}')`)}</div></td>
-            </tr>`;
-          }).join('')}
-          <tr class="total-row">
-            <td colspan="3">Total</td>
-            <td style="color:var(--blue)">${fmtEGP(recvTotalEgp)}</td>
-            <td>${fmtUSD(recvTotalUsd,0)}</td>
-            <td colspan="2"></td>
-          </tr>
-        </tbody>
-      </table>
-    </div>` : `<div style="color:var(--muted);font-size:0.85rem;padding:10px 0">No receivables yet. Track money you've lent to others.</div>`}
   </div>`;
 
   // ── Render Net Worth Timeline Chart ──
@@ -3324,6 +4721,9 @@ function renderWealth() {
    TABS
 ══════════════════════════════════════════ */
 function switchTab(id) {
+  if (id === 'budgets' && !STATE.access.canManageBudgets) id = 'home';
+  if (id === 'wealth' && !STATE.access.canViewWealth) id = 'home';
+  if (id === 'analysis' && !STATE.access.analysisCategories.length) id = 'home';
   document.querySelectorAll('.tab').forEach(t => t.classList.toggle('active', t.dataset.tab===id));
   document.querySelectorAll('.tab-panel').forEach(p => p.classList.toggle('active', p.id==='panel-'+id));
   if (id==='analysis') {
@@ -3411,8 +4811,45 @@ document.getElementById('f-date').value = new Date().toISOString().split('T')[0]
 const _nowKey = `${new Date().getFullYear()}-${String(new Date().getMonth()+1).padStart(2,'0')}`;
 const _specInp = document.getElementById('spec-month');
 if (_specInp) _specInp.value = _nowKey;
+renderShortcutTemplateUrl();
+PENDING_SHORTCUT_EXPENSE = getShortcutExpenseFromUrl();
 
-initDB();
+document.getElementById('auth-password')?.addEventListener('keydown', e => {
+  if (e.key === 'Enter') submitAuthForm();
+});
+db.auth.onAuthStateChange((event, session) => {
+  if (event === 'INITIAL_SESSION') return;
+  void (async () => {
+    if (!session?.user) {
+      STATE.currentUser = null;
+      STATE.access = defaultAccessState();
+      resetAppState();
+      updateUserChip();
+      applyPermissionDrivenUI();
+      setShellState('auth');
+      showLoader(false);
+      return;
+    }
+    try {
+      await withTimeout(
+        handleSignedInUser(session.user),
+        5000,
+        'Post-login bootstrap timed out'
+      );
+    } catch (err) {
+      showLoader(false);
+      if ((err.message || '').includes('Post-login bootstrap timed out')) {
+        renderSetupShell('pending_access', 'Your session is active, but loading your access took too long. Reload after confirming this user has permission rows in Supabase.');
+        setShellState('setup');
+        return;
+      }
+      setShellState('auth');
+      showAuthError(err.message || 'Could not load your access permissions. Run the SQL setup first.');
+    }
+  })();
+});
+
+bootApp();
 </script>
 </body>
 </html>

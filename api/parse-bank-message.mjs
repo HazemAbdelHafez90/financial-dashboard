@@ -26,6 +26,8 @@ function sanitizeMessage(message = '') {
 
 function extractAmount(text) {
   const patterns = [
+    /تم سحب مبلغ\s*(?:EGP|جم|جنيه)?\s*([0-9]+(?:\.[0-9]+)?)/i,
+    /تم تنفيذ تحويل(?:\s+لحظي)?\s+بمبلغ\s*(?:EGP|جم|جنيه)?\s*([0-9]+(?:\.[0-9]+)?)/i,
     /تم خصم\s*(?:مبلغ\s*)?(?:EGP|جم|جنيه)?\s*([0-9]+(?:\.[0-9]+)?)/i,
     /تم خصم مبلغ\s*(?:EGP|جم|جنيه)?\s*([0-9]+(?:\.[0-9]+)?)/i,
     /بمبلغ\s*(?:EGP|جم|جنيه)?\s*([0-9]+(?:\.[0-9]+)?)/i
@@ -47,7 +49,12 @@ function extractDate(text) {
 }
 
 function extractMerchant(text) {
+  if (/تم تنفيذ تحويل(?:\s+لحظي)?/.test(text)) {
+    return 'Instant Transfer';
+  }
+
   const patterns = [
+    /من\s+([A-Z][A-Z0-9&.'\- ]+?)\s+في\s+[0-9]{2}[\/-][0-9]{2}[\/-][0-9]{2,4}/,
     /([A-Z][A-Z0-9&.'\- ]{2,})\s+في\s+[0-9]{2}[\/-][0-9]{2}[\/-][0-9]{2,4}/,
     /عند\s+(.+?)\s+في\s+[0-9]{2}[\/-][0-9]{2}[\/-][0-9]{2,4}/,
     /عند\s+(.+?)\s+[0-9]{2}[\/-][0-9]{2}[\/-][0-9]{2,4}/,
@@ -75,9 +82,16 @@ function inferCategory(merchant) {
   return 'Hazem Personal';
 }
 
+function resolveCategory(text, merchant) {
+  if (/تم تنفيذ تحويل|تحويل لحظي/.test(text)) return 'Hazem Personal';
+  if (/تم سحب مبلغ/.test(text)) return '';
+  return inferCategory(merchant);
+}
+
 function classifyMessage(text) {
+  if (/تم سحب مبلغ/.test(text)) return 'expense';
+  if (/تم تنفيذ تحويل|تحويل لحظي/.test(text)) return 'expense';
   if (/تم خصم(?:\s+مبلغ)?/.test(text)) return 'expense';
-  if (/تم تنفيذ تحويل|تحويل لحظي/.test(text)) return 'transfer';
   return 'unknown';
 }
 
@@ -87,9 +101,9 @@ function buildOpenUrl(parsed) {
   url.searchParams.set('amount', String(parsed.amount));
   url.searchParams.set('merchant', parsed.merchant);
   url.searchParams.set('date', parsed.date);
-  url.searchParams.set('category', parsed.category);
+  if (parsed.category) url.searchParams.set('category', parsed.category);
   url.searchParams.set('type', 'Planned');
-  url.searchParams.set('autosave', '1');
+  url.searchParams.set('autosave', parsed.category ? '1' : '0');
   url.searchParams.set('source', 'bank-sms');
   return url.toString();
 }
@@ -122,10 +136,10 @@ export function parseBankMessage(message) {
 
   if (kind !== 'expense') {
     return {
-      ok: kind === 'transfer',
+      ok: false,
       kind,
       shouldCreateExpense: false,
-      reason: kind === 'transfer' ? 'Transfer message detected, not an expense.' : 'Could not recognize this bank message format.'
+      reason: 'Could not recognize this bank message format.'
     };
   }
 
@@ -147,7 +161,7 @@ export function parseBankMessage(message) {
     amount,
     merchant,
     date,
-    category: inferCategory(merchant),
+    category: resolveCategory(text, merchant),
     type: 'Planned'
   };
 

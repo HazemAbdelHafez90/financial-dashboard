@@ -142,6 +142,18 @@ export async function POST(request) {
   const type = payload.type || parsed.type || 'Planned';
   const date = parsed.date;
 
+  if (!category) {
+    return json({
+      ok: true,
+      inserted: false,
+      manualReview: true,
+      kind: parsedResult.kind,
+      reason: 'Category is empty, so this message was parsed but not inserted.',
+      parsed,
+      openUrl: parsedResult.openUrl
+    });
+  }
+
   const expense = {
     id: crypto.randomUUID(),
     date,

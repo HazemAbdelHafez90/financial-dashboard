@@ -1,0 +1,10 @@
+{
+  "relatedness_score": 0.8,
+  "signal_breakdown": {
+    "project": 0.9,
+    "date": 0.8,
+    "location": 1.0,
+    "collector": 1.0,
+    "text_semantics": 0.9
+  }
+}

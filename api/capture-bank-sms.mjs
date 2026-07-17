@@ -2,6 +2,56 @@ import { parseBankMessage } from './parse-bank-message.mjs';
 
 const SUPABASE_URL = 'https://ppxzhhcceivcdxxxwxqh.supabase.co';
 const EXPENSES_ENDPOINT = `${SUPABASE_URL}/rest/v1/expenses`;
+const SNAPSHOTS_ENDPOINT = `${SUPABASE_URL}/rest/v1/wealth_snapshots`;
+const MONTH_INCOME_ENDPOINT = `${SUPABASE_URL}/rest/v1/month_income`;
+const WEALTH_CASH_ENDPOINT = `${SUPABASE_URL}/rest/v1/wealth_cash`;
+
+/* Fetch latest FX rate (foreign → EGP) for a given currency.
+   Tries wealth_snapshots (rates JSON) → month_income.income_rate (USD only) → wealth_cash.rate.
+   Returns null if none found. Uses service-role key so it can read any user's rows. */
+async function getLatestFxRateToEgp(currency, serviceRoleKey) {
+  if (!currency || currency === 'EGP') return 1;
+  const cur = String(currency).toUpperCase();
+  const headers = {
+    apikey: serviceRoleKey,
+    authorization: `Bearer ${serviceRoleKey}`
+  };
+
+  try {
+    // 1. wealth_snapshots — most recent month_key that has a rate for this currency
+    const snapRes = await fetch(`${SNAPSHOTS_ENDPOINT}?select=month_key,rates&order=month_key.desc&limit=30`, { headers });
+    if (snapRes.ok) {
+      const snaps = await snapRes.json();
+      for (const s of snaps) {
+        const r = s.rates?.[cur] ?? s.rates?.[cur.toLowerCase()];
+        if (r && Number(r) > 0) return Number(r);
+      }
+    }
+
+    // 2. month_income.income_rate (USD only)
+    if (cur === 'USD') {
+      const inc = await fetch(`${MONTH_INCOME_ENDPOINT}?select=month_key,income_rate&income_rate=not.is.null&order=month_key.desc&limit=5`, { headers });
+      if (inc.ok) {
+        const rows = await inc.json();
+        for (const r of rows) {
+          if (r.income_rate && Number(r.income_rate) > 0) return Number(r.income_rate);
+        }
+      }
+    }
+
+    // 3. wealth_cash for the currency
+    const cashRes = await fetch(`${WEALTH_CASH_ENDPOINT}?select=currency,rate&currency=eq.${cur}&rate=not.is.null&order=id.desc&limit=5`, { headers });
+    if (cashRes.ok) {
+      const rows = await cashRes.json();
+      for (const r of rows) {
+        if (r.rate && Number(r.rate) > 0) return Number(r.rate);
+      }
+    }
+  } catch (e) {
+    console.warn('[capture-bank-sms] FX lookup failed', e.message);
+  }
+  return null;
+}
 
 function json(data, status = 200) {
   return new Response(JSON.stringify(data, null, 2), {
@@ -154,12 +204,37 @@ export async function POST(request) {
     });
   }
 
+  // ── Currency conversion (foreign → EGP) ──
+  const rawCurrency = (parsed.currency || 'EGP').toUpperCase();
+  let finalAmount = parsed.amount;
+  let conversionNote = '';
+  let fxRate = null;
+
+  if (rawCurrency !== 'EGP') {
+    const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+    if (!serviceRoleKey) {
+      console.warn('[capture-bank-sms] cannot convert currency without SUPABASE_SERVICE_ROLE_KEY');
+    } else {
+      fxRate = await getLatestFxRateToEgp(rawCurrency, serviceRoleKey);
+      if (fxRate && fxRate > 0) {
+        finalAmount = Math.round(parsed.amount * fxRate);
+        conversionNote = `[${parsed.amount} ${rawCurrency} × ${fxRate.toFixed(2)} = ${finalAmount} EGP]`;
+        console.log('[capture-bank-sms] FX conversion', { raw: parsed.amount, currency: rawCurrency, rate: fxRate, egp: finalAmount });
+      } else {
+        conversionNote = `[warning: ${parsed.amount} ${rawCurrency} — no FX rate found, saved as raw]`;
+        console.warn('[capture-bank-sms] no FX rate found for', rawCurrency, '— saving raw amount');
+      }
+    }
+  }
+
+  const description = conversionNote ? `${parsed.merchant} | ${conversionNote}` : parsed.merchant;
+
   const expense = {
     id: crypto.randomUUID(),
     date,
-    amount: parsed.amount,
+    amount: finalAmount,
     category,
-    description: parsed.merchant,
+    description,
     type,
     month_key: dateToMonthKey(date)
   };

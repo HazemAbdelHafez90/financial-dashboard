@@ -24,19 +24,34 @@ function sanitizeMessage(message = '') {
   return normalizeWhitespace(normalizeArabicDigits(message));
 }
 
-function extractAmount(text) {
+/* Currency token: any ISO 3-letter code we support, plus Arabic EGP synonyms.
+   Capture group 1 = currency (may be absent → assume EGP).
+   Capture group 2 = numeric amount. */
+const CURRENCY_TOKEN = '(EGP|USD|EUR|GBP|SAR|AED|CHF|JPY|جم|جنيه)';
+
+function extractAmountAndCurrency(text) {
   const patterns = [
-    /تم سحب مبلغ\s*(?:EGP|جم|جنيه)?\s*([0-9]+(?:\.[0-9]+)?)/i,
-    /تم تنفيذ تحويل(?:\s+لحظي)?\s+بمبلغ\s*(?:EGP|جم|جنيه)?\s*([0-9]+(?:\.[0-9]+)?)/i,
-    /تم خصم\s*(?:مبلغ\s*)?(?:EGP|جم|جنيه)?\s*([0-9]+(?:\.[0-9]+)?)/i,
-    /تم خصم مبلغ\s*(?:EGP|جم|جنيه)?\s*([0-9]+(?:\.[0-9]+)?)/i,
-    /بمبلغ\s*(?:EGP|جم|جنيه)?\s*([0-9]+(?:\.[0-9]+)?)/i
+    new RegExp(`تم سحب مبلغ\\s*${CURRENCY_TOKEN}?\\s*([0-9]+(?:\\.[0-9]+)?)`, 'i'),
+    new RegExp(`تم تنفيذ تحويل(?:\\s+لحظي)?\\s+بمبلغ\\s*${CURRENCY_TOKEN}?\\s*([0-9]+(?:\\.[0-9]+)?)`, 'i'),
+    new RegExp(`تم خصم\\s*(?:مبلغ\\s*)?${CURRENCY_TOKEN}?\\s*([0-9]+(?:\\.[0-9]+)?)`, 'i'),
+    new RegExp(`تم خصم مبلغ\\s*${CURRENCY_TOKEN}?\\s*([0-9]+(?:\\.[0-9]+)?)`, 'i'),
+    new RegExp(`بمبلغ\\s*${CURRENCY_TOKEN}?\\s*([0-9]+(?:\\.[0-9]+)?)`, 'i')
   ];
   for (const pattern of patterns) {
     const match = text.match(pattern);
-    if (match) return Number.parseFloat(match[1]);
+    if (match) {
+      const rawCur = (match[1] || '').toUpperCase();
+      const currency = (!rawCur || rawCur === 'جم' || rawCur === 'جنيه') ? 'EGP' : rawCur;
+      return { amount: Number.parseFloat(match[2]), currency };
+    }
   }
   return null;
+}
+
+/* Back-compat shim — some callers still expect a bare number */
+function extractAmount(text) {
+  const r = extractAmountAndCurrency(text);
+  return r ? r.amount : null;
 }
 
 function extractDate(text) {
@@ -143,7 +158,9 @@ export function parseBankMessage(message) {
     };
   }
 
-  const amount = extractAmount(text);
+  const amountInfo = extractAmountAndCurrency(text);
+  const amount = amountInfo?.amount;
+  const currency = amountInfo?.currency || 'EGP';
   const merchant = extractMerchant(text);
   const date = extractDate(text);
 
@@ -158,7 +175,8 @@ export function parseBankMessage(message) {
   }
 
   const parsed = {
-    amount,
+    amount,        // raw (may be foreign); caller converts to EGP
+    currency,      // e.g. "USD", "EGP"
     merchant,
     date,
     category: resolveCategory(text, merchant),

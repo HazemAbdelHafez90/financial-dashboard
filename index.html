@@ -2447,7 +2447,14 @@ tr:hover td { background: rgba(255,255,255,0.025); }
         <select class="form-input" id="rp-to"></select>
       </div>
       <div class="form-group">
-        <label class="form-label">Dated on or after <span style="color:var(--muted);font-weight:400">— the cycle boundary (e.g. your salary date)</span></label>
+        <label class="form-label">Which expenses</label>
+        <select class="form-input" id="rp-direction">
+          <option value="after">Dated on or after the date below</option>
+          <option value="before">Dated before the date below</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Cycle boundary date <span style="color:var(--muted);font-weight:400">— e.g. your salary date</span></label>
         <input type="date" class="form-input" id="rp-boundary">
       </div>
     </div>
@@ -6708,13 +6715,15 @@ async function doStartMonth() {
 // Expenses filed under prevKey whose date falls on/after the new cycle boundary.
 // Dates are correct; only their month_key is stale. Filtered to categories the
 // user is allowed to modify.
-function findRolloverStragglers(prevKey, boundaryDate) {
+function findRolloverStragglers(prevKey, boundaryDate, direction = 'after') {
   if (!prevKey || !boundaryDate) return [];
-  return STATE.expenses.filter(e =>
-    (e.month_key || dateToMonthKey(e.date)) === prevKey &&
-    e.date >= boundaryDate &&
-    canAddExpenseToCategory(e.category)
-  );
+  return STATE.expenses.filter(e => {
+    if ((e.month_key || dateToMonthKey(e.date)) !== prevKey) return false;
+    if (!canAddExpenseToCategory(e.category)) return false;
+    // 'after'  → dated on/after the boundary (stragglers left in the old month)
+    // 'before' → dated before the boundary   (expenses pulled into the new month too early)
+    return direction === 'before' ? e.date < boundaryDate : e.date >= boundaryDate;
+  });
 }
 
 // Manual entry point: pick which month to move expenses FROM/TO and the boundary date,
@@ -6746,15 +6755,17 @@ function openReconcilePicker() {
 }
 
 function doReconcilePickerFind() {
-  const fromKey  = document.getElementById('rp-from')?.value;
-  const toKey    = document.getElementById('rp-to')?.value;
-  const boundary = document.getElementById('rp-boundary')?.value;
+  const fromKey   = document.getElementById('rp-from')?.value;
+  const toKey     = document.getElementById('rp-to')?.value;
+  const boundary  = document.getElementById('rp-boundary')?.value;
+  const direction = document.getElementById('rp-direction')?.value || 'after';
   if (!fromKey || !toKey)  { showToast('Pick both months.', 'error'); return; }
   if (fromKey === toKey)   { showToast('Choose two different months.', 'error'); return; }
   if (!boundary)           { showToast('Pick a boundary date.', 'error'); return; }
-  const list = findRolloverStragglers(fromKey, boundary);
+  const list = findRolloverStragglers(fromKey, boundary, direction);
   if (!list.length) {
-    showToast(`No expenses in ${monthLabel(fromKey)} dated on/after ${fmtDate(boundary)}.`, 'error');
+    const phrase = direction === 'before' ? 'before' : 'on/after';
+    showToast(`No expenses in ${monthLabel(fromKey)} dated ${phrase} ${fmtDate(boundary)}.`, 'error');
     return;
   }
   closeModal('modal-reconcile-picker');

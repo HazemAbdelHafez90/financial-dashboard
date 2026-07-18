@@ -2420,47 +2420,40 @@ tr:hover td { background: rgba(255,255,255,0.025); }
         <button class="btn btn-ghost btn-sm" onclick="reconcileToggleAll(true)">Select all</button>
         <button class="btn btn-ghost btn-sm" onclick="reconcileToggleAll(false)">Clear</button>
       </div>
-      <div id="reconcile-list" style="max-height:340px;overflow-y:auto;border:1px solid var(--border);border-radius:var(--radius-sm)"></div>
+      <div id="reconcile-groups" style="max-height:360px;overflow-y:auto"></div>
     </div>
     <div class="modal-footer">
       <button class="btn btn-ghost" onclick="closeRolloverReconcile()">Not now</button>
-      <button class="btn btn-primary" id="btn-reconcile-move" onclick="doRolloverReconcile()">Move</button>
+      <button class="btn btn-primary" id="btn-reconcile-move" onclick="applyReconcile()">Move</button>
     </div>
   </div>
 </div>
 
-<!-- MODAL: RECONCILE PICKER (manually choose which months to reconcile) -->
+<!-- MODAL: RECONCILE PICKER (declare the boundary between two months) -->
 <div class="modal-overlay" id="modal-reconcile-picker">
   <div class="modal" style="max-width:480px">
     <div class="modal-header">
-      <div class="modal-title">Reconcile months</div>
+      <div class="modal-title">Split expenses by date</div>
       <button class="modal-close" onclick="closeModal('modal-reconcile-picker')">✕</button>
     </div>
     <div class="modal-body">
-      <p style="font-size:0.78rem;color:var(--muted);margin-bottom:16px">Move expenses filed under the wrong budget month — e.g. transactions that landed in the old month because a rollover happened late. Only the budget month changes; dates stay the same.</p>
+      <p style="font-size:0.78rem;color:var(--muted);margin-bottom:16px">Set the boundary between two months (your salary date). Expenses dated <strong>on or after</strong> it go to the later month; dated <strong>before</strong> it go to the earlier month. Only the budget month changes — dates stay the same.</p>
       <div class="form-group">
-        <label class="form-label">Currently filed under</label>
-        <select class="form-input" id="rp-from"></select>
+        <label class="form-label">Earlier month</label>
+        <select class="form-input" id="rp-earlier"></select>
       </div>
       <div class="form-group">
-        <label class="form-label">Move to</label>
-        <select class="form-input" id="rp-to"></select>
+        <label class="form-label">Later month</label>
+        <select class="form-input" id="rp-later"></select>
       </div>
       <div class="form-group">
-        <label class="form-label">Which expenses</label>
-        <select class="form-input" id="rp-direction">
-          <option value="after">Dated on or after the date below</option>
-          <option value="before">Dated before the date below</option>
-        </select>
-      </div>
-      <div class="form-group">
-        <label class="form-label">Cycle boundary date <span style="color:var(--muted);font-weight:400">— e.g. your salary date</span></label>
+        <label class="form-label">Salary / boundary date</label>
         <input type="date" class="form-input" id="rp-boundary">
       </div>
     </div>
     <div class="modal-footer">
       <button class="btn btn-ghost" onclick="closeModal('modal-reconcile-picker')">Cancel</button>
-      <button class="btn btn-primary" onclick="doReconcilePickerFind()">Find expenses</button>
+      <button class="btn btn-primary" onclick="doReconcilePickerPreview()">Preview split</button>
     </div>
   </div>
 </div>
@@ -6685,16 +6678,16 @@ async function doStartMonth() {
     };
     await dbUpsertMonth(key, config);
 
-    // Detect expenses still filed under the previous month that fall on/after the new
-    // cycle boundary — i.e. transactions that leaked into the old month because the
-    // rollover happened late. Offer to move them before returning home.
-    const stragglers = findRolloverStragglers(currentKey, config.startDate);
+    // Sort expenses onto the correct side of the new cycle boundary between the
+    // previous month and this one (e.g. transactions that leaked into the old month
+    // because the rollover happened late). Offer to move them before returning home.
+    const { toLater, toEarlier } = computeMonthSplit(currentKey, key, config.startDate);
 
     closeModal('modal-start');
     if (document.getElementById('sm-label')) document.getElementById('sm-label').value='';
     showToast(`${config.label} started!`);
-    if (stragglers.length) {
-      openRolloverReconcile(stragglers, currentKey, key);
+    if (toLater.length || toEarlier.length) {
+      openReconcileReview({ earlierKey: currentKey, laterKey: key, boundary: config.startDate, toLater, toEarlier });
     } else {
       renderHome();
       switchTab('home');
@@ -6707,28 +6700,29 @@ async function doStartMonth() {
 }
 
 /* ══════════════════════════════════════════
-   ROLLOVER RECONCILER
-   When a month is started late, expenses dated on/after the new cycle boundary
-   may still be filed under the previous month. Detect and offer to move them.
+   MONTH SPLIT RECONCILER
+   Declare the boundary date (salary date) between two adjacent months; every
+   expense is put on the correct side: dated on/after the boundary → later month,
+   dated before → earlier month. Only month_key changes; dates are untouched.
 ══════════════════════════════════════════ */
 
-// Expenses filed under prevKey whose date falls on/after the new cycle boundary.
-// Dates are correct; only their month_key is stale. Filtered to categories the
-// user is allowed to modify.
-function findRolloverStragglers(prevKey, boundaryDate, direction = 'after') {
-  if (!prevKey || !boundaryDate) return [];
-  return STATE.expenses.filter(e => {
-    if ((e.month_key || dateToMonthKey(e.date)) !== prevKey) return false;
-    if (!canAddExpenseToCategory(e.category)) return false;
-    // 'after'  → dated on/after the boundary (stragglers left in the old month)
-    // 'before' → dated before the boundary   (expenses pulled into the new month too early)
-    return direction === 'before' ? e.date < boundaryDate : e.date >= boundaryDate;
+// Expenses sitting on the wrong side of the boundary between two months:
+//   toLater   → filed under the earlier month but dated on/after the boundary
+//   toEarlier → filed under the later month but dated before the boundary
+// Limited to categories the user may modify.
+function computeMonthSplit(earlierKey, laterKey, boundary) {
+  const toLater = [], toEarlier = [];
+  if (!earlierKey || !laterKey || !boundary) return { toLater, toEarlier };
+  STATE.expenses.forEach(e => {
+    if (!canAddExpenseToCategory(e.category)) return;
+    const filed = e.month_key || dateToMonthKey(e.date);
+    if (filed === earlierKey && e.date >= boundary) toLater.push(e);
+    else if (filed === laterKey && e.date < boundary) toEarlier.push(e);
   });
+  return { toLater, toEarlier };
 }
 
-// Manual entry point: pick which month to move expenses FROM/TO and the boundary date,
-// then hand off to the same reconcile modal used by the auto-on-start flow. Useful when
-// a rollover already happened without reconciling (the auto path only fires at start).
+// Manual entry point: declare the boundary between two months; both sides get sorted.
 function openReconcilePicker() {
   if (!STATE.access.canManageMonths) {
     showToast('You do not have permission to reconcile months.', 'error');
@@ -6740,90 +6734,96 @@ function openReconcilePicker() {
   const opts = keys.map(k =>
     `<option value="${k}">${STATE.months[k].label || monthLabel(k)}${k===activeKey?' (Active)':''}</option>`
   ).join('');
-  const fromSel = document.getElementById('rp-from');
-  const toSel   = document.getElementById('rp-to');
-  fromSel.innerHTML = opts;
-  toSel.innerHTML   = opts;
-  // Default: from = most recent non-active month, to = active month.
-  const prevKey = keys.find(k => k !== activeKey) || keys[0];
-  if (prevKey)   fromSel.value = prevKey;
-  if (activeKey) toSel.value   = activeKey;
-  // Default boundary = active month's recorded start (editable — the real cycle boundary).
+  const laterSel   = document.getElementById('rp-later');
+  const earlierSel = document.getElementById('rp-earlier');
+  laterSel.innerHTML   = opts;
+  earlierSel.innerHTML = opts;
+  // Default: later = active month, earlier = the month right before it.
+  if (activeKey) laterSel.value = activeKey;
+  earlierSel.value = keys.find(k => k < (activeKey || '9999')) || keys.find(k => k !== activeKey) || keys[0];
+  // Default boundary = active month's recorded start (the salary date).
   const bInp = document.getElementById('rp-boundary');
   if (bInp) bInp.value = (activeKey && STATE.months[activeKey]?.startDate) || '';
   openModal('modal-reconcile-picker');
 }
 
-function doReconcilePickerFind() {
-  const fromKey   = document.getElementById('rp-from')?.value;
-  const toKey     = document.getElementById('rp-to')?.value;
-  const boundary  = document.getElementById('rp-boundary')?.value;
-  const direction = document.getElementById('rp-direction')?.value || 'after';
-  if (!fromKey || !toKey)  { showToast('Pick both months.', 'error'); return; }
-  if (fromKey === toKey)   { showToast('Choose two different months.', 'error'); return; }
-  if (!boundary)           { showToast('Pick a boundary date.', 'error'); return; }
-  const list = findRolloverStragglers(fromKey, boundary, direction);
-  if (!list.length) {
-    const phrase = direction === 'before' ? 'before' : 'on/after';
-    showToast(`No expenses in ${monthLabel(fromKey)} dated ${phrase} ${fmtDate(boundary)}.`, 'error');
+function doReconcilePickerPreview() {
+  const earlierKey = document.getElementById('rp-earlier')?.value;
+  const laterKey   = document.getElementById('rp-later')?.value;
+  const boundary   = document.getElementById('rp-boundary')?.value;
+  if (!earlierKey || !laterKey) { showToast('Pick both months.', 'error'); return; }
+  if (earlierKey === laterKey)  { showToast('Choose two different months.', 'error'); return; }
+  if (earlierKey > laterKey)    { showToast('The earlier month must come before the later one.', 'error'); return; }
+  if (!boundary)                { showToast('Pick the salary / boundary date.', 'error'); return; }
+  const { toLater, toEarlier } = computeMonthSplit(earlierKey, laterKey, boundary);
+  if (!toLater.length && !toEarlier.length) {
+    showToast(`Everything is already on the correct side of ${fmtDate(boundary)}.`);
     return;
   }
   closeModal('modal-reconcile-picker');
-  openRolloverReconcile(list, fromKey, toKey);
+  openReconcileReview({ earlierKey, laterKey, boundary, toLater, toEarlier });
 }
 
-let _reconcileState = { ids: new Set(), expenses: [], fromKey: null, toKey: null };
+let _reconcileState = { targets: {}, selected: new Set(), groups: [] };
 
-function openRolloverReconcile(expenses, fromKey, toKey) {
-  _reconcileState = {
-    ids: new Set(expenses.map(e => e.id)),
-    expenses: expenses.slice().sort((a,b) => a.date.localeCompare(b.date)),
-    fromKey, toKey
-  };
-  const list = _reconcileState.expenses;
-  const minD = list[0]?.date, maxD = list[list.length-1]?.date;
-  const range = minD === maxD ? fmtDate(minD) : `${fmtDate(minD)} – ${fmtDate(maxD)}`;
+// Review + confirm. Each group's rows move to group.toKey.
+function openReconcileReview({ earlierKey, laterKey, boundary, toLater, toEarlier }) {
+  const targets = {};
+  toLater.forEach(e => targets[e.id] = laterKey);
+  toEarlier.forEach(e => targets[e.id] = earlierKey);
+  const groups = [
+    { toKey: laterKey,   list: toLater.slice().sort((a,b)=>a.date.localeCompare(b.date)) },
+    { toKey: earlierKey, list: toEarlier.slice().sort((a,b)=>a.date.localeCompare(b.date)) }
+  ].filter(g => g.list.length);
+  _reconcileState = { targets, selected: new Set(Object.keys(targets)), groups };
+  const total = Object.keys(targets).length;
   const summary = document.getElementById('reconcile-summary');
   if (summary) summary.innerHTML =
-    `<strong>${list.length}</strong> expense${list.length===1?'':'s'} dated <strong>${range}</strong> ${list.length===1?'is':'are'} still filed under <strong>${monthLabel(fromKey)}</strong>.`;
-  renderReconcileList();
+    `Boundary <strong>${fmtDate(boundary)}</strong> — <strong>${total}</strong> expense${total===1?'':'s'} on the wrong side.`;
+  renderReconcileGroups();
   updateReconcileButton();
   openModal('modal-reconcile');
 }
 
-function renderReconcileList() {
-  const el = document.getElementById('reconcile-list');
+function _reconcileRow(e) {
+  const checked = _reconcileState.selected.has(e.id) ? 'checked' : '';
+  const amt  = Math.round(Number(e.amount)||0).toLocaleString('en-EG');
+  const desc = (e.description || '').replace(/</g,'&lt;');
+  return `<label style="display:flex;align-items:center;gap:10px;padding:9px 12px;border-bottom:1px solid var(--border);cursor:pointer">
+    <input type="checkbox" ${checked} onchange="toggleReconcile('${e.id}', this.checked)" style="flex:none">
+    <span style="flex:none;width:78px;font-size:0.74rem;color:var(--muted)">${fmtDate(e.date)}</span>
+    <span style="flex:1;min-width:0;font-size:0.8rem;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${e.category}${desc?` · <span style="color:var(--muted)">${desc}</span>`:''}</span>
+    <span style="flex:none;font-size:0.8rem;font-weight:700;color:var(--text)">${amt}</span>
+  </label>`;
+}
+
+function renderReconcileGroups() {
+  const el = document.getElementById('reconcile-groups');
   if (!el) return;
-  el.innerHTML = _reconcileState.expenses.map(e => {
-    const checked = _reconcileState.ids.has(e.id) ? 'checked' : '';
-    const amt = Math.round(Number(e.amount)||0).toLocaleString('en-EG');
-    const desc = (e.description || '').replace(/</g,'&lt;');
-    return `<label style="display:flex;align-items:center;gap:10px;padding:9px 12px;border-bottom:1px solid var(--border);cursor:pointer">
-      <input type="checkbox" ${checked} onchange="toggleReconcile('${e.id}', this.checked)" style="flex:none">
-      <span style="flex:none;width:78px;font-size:0.74rem;color:var(--muted)">${fmtDate(e.date)}</span>
-      <span style="flex:1;min-width:0;font-size:0.8rem;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${e.category}${desc?` · <span style="color:var(--muted)">${desc}</span>`:''}</span>
-      <span style="flex:none;font-size:0.8rem;font-weight:700;color:var(--text)">${amt}</span>
-    </label>`;
-  }).join('');
+  el.innerHTML = _reconcileState.groups.map(g => `
+    <div style="margin-bottom:14px">
+      <div style="font-size:0.72rem;font-weight:700;text-transform:uppercase;letter-spacing:0.05em;color:var(--muted);margin-bottom:6px">→ Move to ${monthLabel(g.toKey)} · ${g.list.length}</div>
+      <div style="border:1px solid var(--border);border-radius:var(--radius-sm);overflow:hidden">${g.list.map(_reconcileRow).join('')}</div>
+    </div>`).join('');
 }
 
 function toggleReconcile(id, on) {
-  if (on) _reconcileState.ids.add(id); else _reconcileState.ids.delete(id);
+  if (on) _reconcileState.selected.add(id); else _reconcileState.selected.delete(id);
   updateReconcileButton();
 }
 
 function reconcileToggleAll(on) {
-  _reconcileState.ids = on ? new Set(_reconcileState.expenses.map(e => e.id)) : new Set();
-  renderReconcileList();
+  _reconcileState.selected = on ? new Set(Object.keys(_reconcileState.targets)) : new Set();
+  renderReconcileGroups();
   updateReconcileButton();
 }
 
 function updateReconcileButton() {
   const btn = document.getElementById('btn-reconcile-move');
   if (!btn) return;
-  const n = _reconcileState.ids.size;
+  const n = _reconcileState.selected.size;
   btn.disabled = n === 0;
-  btn.textContent = n ? `Move ${n} to ${monthLabel(_reconcileState.toKey)}` : 'Nothing selected';
+  btn.textContent = n ? `Move ${n} expense${n===1?'':'s'}` : 'Nothing selected';
 }
 
 function _finishReconcile() {
@@ -6834,14 +6834,18 @@ function _finishReconcile() {
 
 function closeRolloverReconcile() { _finishReconcile(); }
 
-async function doRolloverReconcile() {
-  const ids = [..._reconcileState.ids];
-  if (!ids.length) return;
+async function applyReconcile() {
+  const sel = [..._reconcileState.selected];
+  if (!sel.length) return;
+  const byTarget = {};
+  sel.forEach(id => { const t = _reconcileState.targets[id]; (byTarget[t] = byTarget[t] || []).push(id); });
   const btn = document.getElementById('btn-reconcile-move');
   if (btn) { btn.disabled = true; btn.textContent = 'Moving…'; }
   try {
-    await dbMoveExpensesToMonth(ids, _reconcileState.toKey);
-    showToast(`Moved ${ids.length} expense${ids.length===1?'':'s'} to ${monthLabel(_reconcileState.toKey)}`);
+    for (const [toKey, ids] of Object.entries(byTarget)) {
+      await dbMoveExpensesToMonth(ids, toKey);
+    }
+    showToast(`Moved ${sel.length} expense${sel.length===1?'':'s'}.`);
     _finishReconcile();
   } catch(err) {
     showToast('Error: '+err.message, 'error');

@@ -4106,6 +4106,19 @@ function openBudgetDrilldown(name, budget, spent, pct, isSpecial, specialMonthKe
   /* ── store context for inline edit ── */
   _bdsContext = { name, budget, spent, pct, isSpecial, specialMonthKey, specialId, activeKey };
 
+  /* ── Rebuild the default footer every open (edit mode replaces its HTML, so the
+        view-all / edit-budget buttons must be recreated or they'd be missing here) ── */
+  document.getElementById('bds-footer').innerHTML = `
+    <button class="btn-view-all" id="bds-view-all">
+      Open in Expenses tab
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+    </button>
+    <button id="bds-edit-budget-btn" style="display:none;flex-shrink:0;padding:0 14px;min-height:44px;background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius-sm);color:var(--amber);font-size:0.82rem;font-weight:600;cursor:pointer;transition:background 0.15s,border-color 0.15s"
+      onmouseover="this.style.borderColor='var(--amber)'" onmouseout="this.style.borderColor='var(--border)'"
+      onclick="bdsSwitchToEditBudget()">
+      Edit Budget
+    </button>`;
+
   /* ── ⋯ edit button: hidden — replaced by footer Edit Budget button ── */
   document.getElementById('bds-menu-btn').style.display = 'none';
 

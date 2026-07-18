@@ -33,6 +33,7 @@ function extractAmountAndCurrency(text) {
   const patterns = [
     new RegExp(`تم سحب مبلغ\\s*${CURRENCY_TOKEN}?\\s*([0-9]+(?:\\.[0-9]+)?)`, 'i'),
     new RegExp(`تم تنفيذ تحويل(?:\\s+لحظي)?\\s+بمبلغ\\s*${CURRENCY_TOKEN}?\\s*([0-9]+(?:\\.[0-9]+)?)`, 'i'),
+    new RegExp(`تم تحويل مبلغ\\s*${CURRENCY_TOKEN}?\\s*([0-9]+(?:\\.[0-9]+)?)`, 'i'),
     new RegExp(`تم خصم\\s*(?:مبلغ\\s*)?${CURRENCY_TOKEN}?\\s*([0-9]+(?:\\.[0-9]+)?)`, 'i'),
     new RegExp(`تم خصم مبلغ\\s*${CURRENCY_TOKEN}?\\s*([0-9]+(?:\\.[0-9]+)?)`, 'i'),
     new RegExp(`بمبلغ\\s*${CURRENCY_TOKEN}?\\s*([0-9]+(?:\\.[0-9]+)?)`, 'i')
@@ -55,12 +56,30 @@ function extractAmount(text) {
 }
 
 function extractDate(text) {
+  // YYYY/MM/DD or YYYY-MM-DD (e.g. "في تاريخ 2026/06/23")
+  const iso = text.match(/(?:في|بتاريخ)(?:\s+تاريخ)?\s*([0-9]{4})[\/-]([0-9]{2})[\/-]([0-9]{2})/);
+  if (iso) return `${iso[1]}-${iso[2]}-${iso[3]}`;
+  // DD/MM/YYYY or DD-MM-YY (e.g. "بتاريخ 18-07-2026", "في 02/07/26")
   const match = text.match(/(?:في|بتاريخ)\s*([0-9]{2})[\/-]([0-9]{2})[\/-]([0-9]{2,4})/);
   if (!match) return new Date().toISOString().slice(0, 10);
   const day = match[1];
   const month = match[2];
   const year = match[3].length === 2 ? `20${match[3]}` : match[3];
   return `${year}-${month}-${day}`;
+}
+
+// Money direction: 'in' = arrived in the account, 'out' = left it.
+function detectDirection(text) {
+  if (/إلى حسابك|لحسابك(?:م)?|تم إضافة|تم إيداع/.test(text)) return 'in';
+  if (/من حسابك|تم خصم|تم سحب/.test(text)) return 'out';
+  return 'out';
+}
+
+// Counterparty on a transfer, e.g. "... من احمد محمد ابراهيم موسي برقم مرجعي ..."
+// Restricted to an Arabic name so it never captures "حسابك" or reference numbers.
+function extractCounterparty(text) {
+  const m = text.match(/من\s+((?!حسابك)[؀-ۿ][؀-ۿ\s]+?)\s+(?:برقم مرجعي|بتاريخ|في\s)/);
+  return m?.[1] ? normalizeWhitespace(m[1]) : '';
 }
 
 function extractMerchant(text) {
@@ -97,17 +116,39 @@ function inferCategory(merchant) {
   return 'Hazem Personal';
 }
 
-function resolveCategory(text, merchant) {
-  if (/تم تنفيذ تحويل|تحويل لحظي/.test(text)) return 'Hazem Personal';
-  if (/تم سحب مبلغ/.test(text)) return '';
-  return inferCategory(merchant);
+// Is this a bank message we recognise at all?
+function isRecognized(text) {
+  return /تم سحب|تم خصم|تحويل|تم إضافة|تم إيداع/.test(text);
 }
 
-function classifyMessage(text) {
-  if (/تم سحب مبلغ/.test(text)) return 'expense';
-  if (/تم تنفيذ تحويل|تحويل لحظي/.test(text)) return 'expense';
-  if (/تم خصم(?:\s+مبلغ)?/.test(text)) return 'expense';
-  return 'unknown';
+// Classify a recognised message into its direction, budget type, category and a
+// human-readable description. Incoming money is flagged type 'Received' so the app
+// logs it in its own list and never counts it as spend.
+function classifyTransaction(text) {
+  const direction = detectDirection(text);
+  const isTransfer = /تحويل/.test(text);
+
+  if (direction === 'in') {
+    const cp = extractCounterparty(text);
+    return {
+      direction, isIncoming: true, type: 'Received', category: 'Received',
+      description: cp || (isTransfer ? 'Instant Transfer (received)' : 'Deposit')
+    };
+  }
+  if (isTransfer) {
+    const cp = extractCounterparty(text);
+    return {
+      direction, isIncoming: false, type: 'Planned', category: 'Transfers',
+      description: cp || 'Instant Transfer'
+    };
+  }
+  // Card / debit purchase
+  const merchant = extractMerchant(text);
+  return {
+    direction, isIncoming: false, type: 'Planned',
+    category: merchant ? inferCategory(merchant) : 'Hazem Personal',
+    description: merchant || 'Card Purchase'
+  };
 }
 
 function buildOpenUrl(parsed) {
@@ -116,8 +157,9 @@ function buildOpenUrl(parsed) {
   url.searchParams.set('amount', String(parsed.amount));
   url.searchParams.set('merchant', parsed.merchant);
   url.searchParams.set('date', parsed.date);
+  if (parsed.currency && parsed.currency !== 'EGP') url.searchParams.set('currency', parsed.currency);
   if (parsed.category) url.searchParams.set('category', parsed.category);
-  url.searchParams.set('type', 'Planned');
+  url.searchParams.set('type', parsed.type || 'Planned');
   url.searchParams.set('autosave', parsed.category ? '1' : '0');
   url.searchParams.set('source', 'bank-sms');
   return url.toString();
@@ -147,12 +189,11 @@ async function readMessage(request) {
 
 export function parseBankMessage(message) {
   const text = sanitizeMessage(message);
-  const kind = classifyMessage(text);
 
-  if (kind !== 'expense') {
+  if (!isRecognized(text)) {
     return {
       ok: false,
-      kind,
+      kind: 'unknown',
       shouldCreateExpense: false,
       reason: 'Could not recognize this bank message format.'
     };
@@ -161,31 +202,33 @@ export function parseBankMessage(message) {
   const amountInfo = extractAmountAndCurrency(text);
   const amount = amountInfo?.amount;
   const currency = amountInfo?.currency || 'EGP';
-  const merchant = extractMerchant(text);
   const date = extractDate(text);
+  const tx = classifyTransaction(text);
 
-  if (!amount || !merchant) {
+  if (!amount) {
     return {
       ok: false,
-      kind,
+      kind: tx.isIncoming ? 'received' : 'expense',
       shouldCreateExpense: false,
-      reason: 'Could not extract amount or merchant from the message.',
+      reason: 'Could not extract the amount from the message.',
       normalizedMessage: text
     };
   }
 
   const parsed = {
-    amount,        // raw (may be foreign); caller converts to EGP
-    currency,      // e.g. "USD", "EGP"
-    merchant,
+    amount,               // raw (may be foreign); caller converts to EGP
+    currency,             // e.g. "USD", "EGP"
+    merchant: tx.description,  // merchant (purchase) or counterparty (transfer)
     date,
-    category: resolveCategory(text, merchant),
-    type: 'Planned'
+    category: tx.category,
+    type: tx.type,        // 'Planned' for spend, 'Received' for incoming money
+    direction: tx.direction,
+    isIncoming: tx.isIncoming
   };
 
   return {
     ok: true,
-    kind,
+    kind: tx.isIncoming ? 'received' : 'expense',
     shouldCreateExpense: true,
     parsed,
     openUrl: buildOpenUrl(parsed),

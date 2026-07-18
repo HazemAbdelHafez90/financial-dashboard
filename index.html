@@ -1874,6 +1874,7 @@ tr:hover td { background: rgba(255,255,255,0.025); }
       </select>
       <select class="filter-select" id="exp-filter-month" onchange="STATE.expPage=0;renderExpenses()"><option value="">All Months</option></select>
     </div>
+    <div id="money-in-section" style="display:none;margin-bottom:14px"></div>
     <div class="table-wrap">
       <table>
         <thead><tr><th>Date</th><th>Category</th><th>Description</th><th>Amount (EGP)</th><th>Type</th><th style="width:64px"></th></tr></thead>
@@ -2784,6 +2785,7 @@ const DATA_TIMEOUT_MS = 30000;
 ══════════════════════════════════════════ */
 let STATE = {
   expenses: [],   // [{id, date, amount, category, description, type}]
+  received: [],   // incoming money (type 'Received') — logged but never counted as spend
   base: {},       // {category: amount}
   months: {},     // {'YYYY-MM': {started, startDate, label, specificBudgets}}
   currentUser: null,
@@ -2826,6 +2828,7 @@ STATE.access.analysisCategories = Object.keys(DEFAULT_BASE);
 
 function resetAppState() {
   STATE.expenses = [];
+  STATE.received = [];
   STATE.base = {};
   STATE.months = {};
   STATE.wealth = { cash: [], assets: [], receivables: [], snapshots: [] };
@@ -2912,7 +2915,9 @@ function normalizeShortcutDate(value) {
 }
 
 function normalizeShortcutType(value) {
-  return String(value || '').toLowerCase() === 'unplanned' ? 'Unplanned' : 'Planned';
+  const v = String(value || '').toLowerCase();
+  if (v === 'received') return 'Received';
+  return v === 'unplanned' ? 'Unplanned' : 'Planned';
 }
 
 function cleanShortcutText(value = '') {
@@ -3562,11 +3567,15 @@ async function initDB() {
     if (monthRes.error) throw monthRes.error;
 
     // Map to STATE
-    STATE.expenses = (expRes.data || []).map(r => ({
+    const allExpRows = (expRes.data || []).map(r => ({
       id: r.id, date: r.date, amount: Number(r.amount),
       category: r.category, description: r.description || '', type: r.type || 'Planned',
       month_key: r.month_key || dateToMonthKey(r.date) // fallback for old expenses
     })).filter(r => canViewCategory(r.category));
+    // Incoming money (type 'Received') is logged but kept OUT of STATE.expenses so it
+    // never enters any spend/budget/analysis total. Shown separately as "Money In".
+    STATE.received = allExpRows.filter(r => r.type === 'Received');
+    STATE.expenses = allExpRows.filter(r => r.type !== 'Received');
 
     STATE.base = Object.fromEntries((baseRes.data || [])
       .filter(r => canViewCategory(r.category))
@@ -3655,15 +3664,17 @@ async function dbAddExpense(expense) {
     month_key: expense.month_key
   });
   if (error) throw error;
-  STATE.expenses.unshift(expense);
+  if (expense.type === 'Received') STATE.received.unshift(expense);
+  else STATE.expenses.unshift(expense);
 }
 
 async function dbDeleteExpense(id) {
-  const current = STATE.expenses.find(e => e.id === id);
+  const current = STATE.expenses.find(e => e.id === id) || STATE.received.find(e => e.id === id);
   if (current && !canAddExpenseToCategory(current.category)) throw new Error('You do not have permission to delete this expense.');
   const { error } = await db.from('expenses').delete().eq('id', id);
   if (error) throw error;
   STATE.expenses = STATE.expenses.filter(e => e.id !== id);
+  STATE.received = STATE.received.filter(e => e.id !== id);
 }
 
 async function dbUpdateExpense(expense) {
@@ -4506,7 +4517,30 @@ function applyBcardHint() {
 /* ══════════════════════════════════════════
    RENDER EXPENSES
 ══════════════════════════════════════════ */
+function renderMoneyIn() {
+  const el = document.getElementById('money-in-section');
+  if (!el) return;
+  const rows = (STATE.received || []).slice().sort((a,b) => b.date.localeCompare(a.date));
+  if (!rows.length) { el.style.display = 'none'; el.innerHTML = ''; return; }
+  const total = rows.reduce((s,e) => s + (Number(e.amount)||0), 0);
+  el.style.display = '';
+  el.innerHTML = `
+    <div style="border:1px solid var(--green-glow,rgba(34,212,122,0.25));border-radius:var(--radius-sm);overflow:hidden">
+      <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 14px;background:var(--green-dim)">
+        <span style="font-size:0.75rem;font-weight:700;text-transform:uppercase;letter-spacing:0.05em;color:var(--green)">↓ Money In · not counted as spend</span>
+        <span style="font-size:0.85rem;font-weight:700;color:var(--green)">${Math.round(total).toLocaleString('en-EG')} EGP</span>
+      </div>
+      ${rows.map(e => `<div style="display:flex;align-items:center;gap:10px;padding:9px 14px;border-top:1px solid var(--border)">
+        <span style="flex:none;width:78px;font-size:0.74rem;color:var(--muted)">${fmtDate(e.date)}</span>
+        <span style="flex:1;min-width:0;font-size:0.82rem;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${(e.description||e.category||'').replace(/</g,'&lt;')}</span>
+        <span style="flex:none;font-size:0.82rem;font-weight:700;color:var(--green)">+${Math.round(Number(e.amount)||0).toLocaleString('en-EG')}</span>
+        <button class="btn btn-ghost btn-sm" style="flex:none;padding:2px 6px" onclick="deleteExpense('${e.id}')" title="Delete">✕</button>
+      </div>`).join('')}
+    </div>`;
+}
+
 function renderExpenses() {
+  renderMoneyIn();
   const expenses = STATE.expenses;
   const search   = (document.getElementById('exp-search')?.value||'').toLowerCase();
   const catF     = document.getElementById('exp-filter-cat')?.value||'';

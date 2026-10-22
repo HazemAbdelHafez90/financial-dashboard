@@ -1253,6 +1253,55 @@ tr:hover td { background: rgba(255,255,255,0.025); }
 .dive-cat-bar-fill { height: 100%; border-radius: 4px; transition: width .75s cubic-bezier(.4,0,.2,1); }
 .dive-cat-amt { font-size: 0.74rem; font-weight: 600; color: var(--muted); min-width: 50px; text-align: right; font-family: 'DM Mono', monospace; }
 
+/* Month Review (inside Month Deep Dive) */
+#month-review { max-width: 860px; }
+.review-toolbar { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; font-size: 0.78rem; color: var(--muted); flex-wrap: wrap; }
+.review-toolbar .filter-select { width: auto; min-width: 170px; }
+.review-hint { font-size: 0.74rem; color: var(--muted); margin-bottom: 10px; line-height: 1.45; }
+.review-table { border: 1px solid var(--border); border-radius: var(--radius-sm); overflow: hidden; }
+.review-row { border-top: 1px solid var(--border); }
+.review-row:first-child { border-top: none; }
+.review-row.open { background: rgba(255,255,255,0.02); }
+.review-row-head {
+  width: 100%; display: flex; align-items: center; gap: 10px; min-height: 44px;
+  padding: 10px 14px 4px; background: none; border: none; color: var(--text);
+  font: inherit; text-align: left; cursor: pointer;
+}
+.review-cat { flex: 1; min-width: 0; font-size: 0.86rem; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.review-spent { font-size: 0.86rem; font-weight: 700; font-variant-numeric: tabular-nums; }
+.review-chev { flex: none; color: var(--muted); transition: transform 0.2s; }
+.review-row.open .review-chev { transform: rotate(180deg); }
+.review-delta { flex: none; min-width: 64px; text-align: right; font-size: 0.76rem; font-weight: 700; font-variant-numeric: tabular-nums; }
+.review-delta.up { color: var(--red); }
+.review-delta.down { color: var(--green); }
+.review-delta.flat { color: var(--muted); font-weight: 500; }
+.review-bar { position: relative; height: 6px; margin: 2px 14px 0; background: rgba(255,255,255,0.07); border-radius: 3px; }
+.review-bar-fill { height: 100%; border-radius: 3px; background: var(--amber); }
+.review-bar-fill.over { background: var(--red); }
+.review-bar-mark { position: absolute; top: -3px; width: 2px; height: 12px; background: var(--text); border-radius: 1px; margin-left: -1px; }
+.review-meta { padding: 5px 14px 10px; font-size: 0.72rem; color: var(--muted); }
+.review-drill { padding: 4px 14px 12px; }
+.review-group { padding: 8px 0; border-top: 1px dashed var(--border); }
+.review-g-main, .review-person { display: flex; align-items: center; gap: 10px; }
+.review-g-name { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 3px; text-align: left; font-size: 0.8rem; }
+.review-g-title { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.review-g-tags { display: flex; flex-wrap: wrap; gap: 4px; }
+.review-g-amt { flex: none; font-size: 0.8rem; font-weight: 600; font-variant-numeric: tabular-nums; }
+.review-people { margin: 4px 0 0 12px; padding-left: 10px; border-left: 2px solid var(--border); }
+.review-person { padding: 3px 0; min-height: 36px; }
+.review-person .review-g-name { font-size: 0.76rem; }
+.review-tag { display: inline-block; padding: 1px 6px; border-radius: 100px; font-size: 0.62rem; font-weight: 700; vertical-align: 1px; background: rgba(255,255,255,0.08); color: var(--text); }
+.review-tag.new { background: var(--blue-dim); color: var(--blue); }
+.review-tag.oneoff { background: var(--amber-dim); color: var(--amber); }
+.review-tag.label { background: var(--purple-dim); color: var(--purple); }
+.review-label-btn { flex: none; min-height: 32px; padding: 0 10px; border-radius: 8px; border: 1px solid var(--border); background: var(--bg3); color: var(--blue); font: inherit; font-size: 0.72rem; font-weight: 600; cursor: pointer; }
+.review-label-editor { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; padding: 6px 0 8px; }
+.review-label-editor .form-input { flex: 1 1 160px; min-height: 40px; padding: 6px 10px; font-size: 0.82rem; }
+.review-missing { margin-top: 8px; font-size: 0.74rem; color: var(--muted); }
+.review-legend { margin-top: 8px; font-size: 0.7rem; color: var(--muted); display: flex; align-items: center; gap: 6px; }
+.review-legend-mark { display: inline-block; width: 2px; height: 12px; background: var(--text); border-radius: 1px; }
+.muted { color: var(--muted); }
+
 /* ══════════════════════════════
    WEALTH TAB
    ══════════════════════════════ */
@@ -2867,7 +2916,8 @@ let STATE = {
   expPage: 0,         // current expenses page (0-indexed)
   summaryPage: 0,     // current monthly summary page (0-indexed)
   analysisYear: '2024+', // filter for Analysis tab
-  habitOverrides: {}  // { normDesc: groupName } — loaded from habit_overrides table
+  habitOverrides: {}, // { normDesc: groupName } — loaded from habit_overrides table
+  transferLabels: {}  // { personKey: label } — habit_overrides rows keyed "person:<key>"
 };
 const EXP_PAGE_SIZE     = 15;
 const SUMMARY_PAGE_SIZE = 12;
@@ -2891,6 +2941,7 @@ function resetAppState() {
   STATE.months = {};
   STATE.wealth = { cash: [], assets: [], receivables: [], snapshots: [] };
   STATE.habitOverrides = {};
+  STATE.transferLabels = {};
   STATE.loaded = false;
   STATE.expPage = 0;
   STATE.summaryPage = 0;
@@ -3683,8 +3734,14 @@ async function initDB() {
     STATE.wealth.snapshots   = (snapRes.data  || []).map(r => ({ month_key:r.month_key, net_egp:Number(r.net_egp), net_usd:r.net_usd?Number(r.net_usd):null, cash_egp:Number(r.cash_egp||0), assets_egp:Number(r.assets_egp||0), recv_egp:Number(r.recv_egp||0), rates:r.rates||{}, asset_prices:r.asset_prices||{}, notes:r.notes||'' }));
 
     // Load habit overrides (per-user). If the table doesn't exist yet, we fall back to {} — the app still works.
+    // Rows keyed "person:<name>" are transfer labels (Month Review), not merchant groups.
+    const ovRows = habitOvRes?.data || [];
     STATE.habitOverrides = Object.fromEntries(
-      (habitOvRes?.data || []).map(r => [r.norm_desc, r.group_name])
+      ovRows.filter(r => !r.norm_desc.startsWith(PERSON_LABEL_PREFIX)).map(r => [r.norm_desc, r.group_name])
+    );
+    STATE.transferLabels = Object.fromEntries(
+      ovRows.filter(r => r.norm_desc.startsWith(PERSON_LABEL_PREFIX))
+        .map(r => [r.norm_desc.slice(PERSON_LABEL_PREFIX.length), r.group_name])
     );
 
     // One-time migration from localStorage → DB (for owner accounts only)
@@ -5300,6 +5357,347 @@ function renderArchivedMonths() {
   }
 }
 
+/* ══════════════════════════════════════════
+   MONTH REVIEW
+   Explains where a month's money went: each category (and each merchant or
+   person inside it) against a baseline — the median of the previous 6 months,
+   or another month the user picks. Transfers are grouped by the label given to
+   each recipient (e.g. "Omar → Family support").
+══════════════════════════════════════════ */
+const REVIEW_HISTORY_MONTHS = 6;
+const TRANSFER_CATEGORY = 'Transfers';
+const PERSON_LABEL_PREFIX = 'person:';
+const TRANSFER_LABEL_SUGGESTIONS = ['Family support', 'Rent', 'Loan given', 'Loan repaid', 'Savings', 'Bills', 'Gifts', 'Charity', 'Household help'];
+let _review = { key: '', compareTo: 'typical', open: {}, editing: '' };
+
+// Merchant identity: the text before any " | " note, Arabic letter variants unified,
+// digits/punctuation dropped, first 3 words. Works for Latin and Arabic names.
+function reviewMerchantKey(desc) {
+  let s = String(desc || '').split(' | ')[0].toLowerCase();
+  s = s.replace(/[إأآ]/g, 'ا').replace(/ى/g, 'ي').replace(/ة/g, 'ه').replace(/[ً-ْ]/g, '');
+  s = s.replace(/[^\p{L}\s]/gu, ' ').replace(/\s+/g, ' ').trim();
+  return s.split(' ').filter(w => w.length >= 2).slice(0, 3).join(' ');
+}
+
+// Transfers without a recipient name ("Instant Transfer") can't be attributed to a person.
+const GENERIC_TRANSFER_KEYS = new Set(['instant transfer', 'instant transfer received', 'transfer', 'deposit', 'card purchase']);
+function reviewPersonKey(desc) {
+  const k = reviewMerchantKey(desc);
+  return GENERIC_TRANSFER_KEYS.has(k) ? '' : k;
+}
+
+// Grouping key inside a category. Transfers group by label when the recipient has one.
+function reviewGroupOf(e) {
+  const raw = String(e.description || '').split(' | ')[0].trim();
+  if (e.category === TRANSFER_CATEGORY) {
+    const person = reviewPersonKey(e.description);
+    const label = person && STATE.transferLabels[person];
+    if (label) return { key: 'label:' + label, name: label, person, isLabel: true };
+    return { key: person ? 'person:' + person : 'unknown', name: person ? raw : 'Unknown recipient', person };
+  }
+  const k = reviewMerchantKey(e.description);
+  return { key: k || 'none', name: k ? raw : '(no description)' };
+}
+
+// { monthKey: { total, cats: { cat: { total, groups: { key: { name, total, count, items, isLabel } } } } } }
+// cutoffs: optional { monthKey: 'YYYY-MM-DD' } — only entries dated before it count for that month.
+function reviewSummaries(cutoffs = null) {
+  const months = {};
+  STATE.expenses.forEach(e => {
+    if (!canViewAnalysisForCategory(e.category)) return;
+    const mk = e.month_key || dateToMonthKey(e.date);
+    if (!mk) return;
+    if (cutoffs && cutoffs[mk] && e.date >= cutoffs[mk]) return;
+    const m = months[mk] = months[mk] || { total: 0, cats: {} };
+    const c = m.cats[e.category] = m.cats[e.category] || { total: 0, groups: {} };
+    const g = reviewGroupOf(e);
+    const grp = c.groups[g.key] = c.groups[g.key] || { name: g.name, total: 0, count: 0, items: [], isLabel: !!g.isLabel };
+    m.total += e.amount; c.total += e.amount;
+    grp.total += e.amount; grp.count++; grp.items.push(e);
+  });
+  return months;
+}
+
+// Effective budget for a category in a month: override → base, plus any additive specials.
+function reviewBudgetFor(key, cat) {
+  const specs = STATE.months[key]?.specificBudgets || [];
+  const ovr = specs.find(s => s.type === 'override' && s.name === cat);
+  const extras = specs.filter(s => s.type !== 'override' && s.name === cat).reduce((t, s) => t + s.amount, 0);
+  const base = ovr ? ovr.amount : (STATE.base[cat] || 0);
+  return base + extras;
+}
+
+// Cycle start of a month: its recorded start date, else the 19th of the previous month.
+function reviewStartOf(key) {
+  if (STATE.months[key]?.startDate) return STATE.months[key].startDate;
+  const [y, m] = key.split('-').map(Number);
+  return m === 1 ? `${y - 1}-12-19` : `${y}-${String(m - 1).padStart(2, '0')}-19`;
+}
+
+function addDaysToDate(dateStr, n) {
+  const d = new Date(dateStr + 'T00:00:00Z');
+  d.setUTCDate(d.getUTCDate() + n);
+  return d.toISOString().slice(0, 10);
+}
+
+// Days elapsed in the active month's cycle (null for a finished month).
+function reviewDaysIn(key) {
+  if (key !== getActiveKey()) return null;
+  const start = reviewStartOf(key);
+  const days = Math.round((new Date(localDateStr() + 'T00:00:00Z') - new Date(start + 'T00:00:00Z')) / 86400000) + 1;
+  const length = Math.round((new Date(addMonthsToDate(start, 1) + 'T00:00:00Z') - new Date(start + 'T00:00:00Z')) / 86400000);
+  return days >= 1 && days < length ? { days, length } : null;
+}
+
+function computeMonthReview(key, compareTo) {
+  const months = reviewSummaries();
+  const cur = months[key] || { total: 0, cats: {} };
+  const prior = Object.keys(months).filter(k => k < key).sort().slice(-REVIEW_HISTORY_MONTHS);
+
+  // For a month in progress, compare against what earlier months had spent by the
+  // same day of their cycle (big fixed payments land early, so linear scaling misleads).
+  const progress = reviewDaysIn(key);
+  const atSamePoint = progress
+    ? reviewSummaries(Object.fromEntries(Object.keys(months).filter(k => k !== key)
+        .map(k => [k, addDaysToDate(reviewStartOf(k), progress.days)])))
+    : months;
+
+  let baseline = null, baselineLabel = '';
+  if (compareTo !== 'typical' && months[compareTo]) {
+    const m = atSamePoint[compareTo] || { total: 0, cats: {} };
+    baseline = {
+      total: m.total,
+      cat: c => m.cats[c]?.total || 0,
+      group: (c, g) => m.cats[c]?.groups[g]?.total || 0
+    };
+    baselineLabel = monthLabel(compareTo);
+  } else if (prior.length >= 2) {
+    const med = vals => _suggestMedian(vals) || 0;
+    const at = k => atSamePoint[k] || { total: 0, cats: {} };
+    baseline = {
+      total: med(prior.map(k => at(k).total)),
+      cat: c => med(prior.map(k => at(k).cats[c]?.total || 0)),
+      group: (c, g) => med(prior.map(k => at(k).cats[c]?.groups[g]?.total || 0))
+    };
+    baselineLabel = `typical (median of ${prior.length} months)`;
+  }
+
+  // History-based tags (always from the months before this one).
+  const presence = (c, g, keys) => keys.filter(k => (months[k]?.cats[c]?.groups[g]?.total || 0) > 0).length;
+  const last3 = prior.slice(-3), prevKey = prior[prior.length - 1];
+
+  const catNames = new Set(Object.keys(cur.cats));
+  if (baseline) prior.concat(compareTo !== 'typical' ? [compareTo] : []).forEach(k =>
+    Object.keys(months[k]?.cats || {}).forEach(c => { if (baseline.cat(c) > 0) catNames.add(c); }));
+
+  const cats = [...catNames].map(cat => {
+    const c = cur.cats[cat] || { total: 0, groups: {} };
+    const typical = baseline ? (baseline.cat(cat)) : null;
+    const groups = Object.entries(c.groups).map(([gk, g]) => {
+      const gTypical = baseline ? (baseline.group(cat, gk)) : null;
+      const seenPrior = presence(cat, gk, prior);
+      const recurring = prior.length >= 3 && seenPrior >= 3;
+      const isNew = prior.length >= 2 && presence(cat, gk, last3) === 0;
+      const oneOff = !recurring && g.count === 1 && c.total > 0 && g.total >= 0.25 * c.total && gk !== 'none' && gk !== 'unknown';
+      return { key: gk, ...g, typical: gTypical, delta: gTypical === null ? null : g.total - gTypical, recurring, isNew, oneOff };
+    }).sort((a, b) => b.total - a.total);
+    // Regular payments that didn't show up this month.
+    const missing = !progress && prior.length >= 3 ? Object.entries(months[prevKey]?.cats[cat]?.groups || {})
+      .filter(([gk]) => !c.groups[gk] && presence(cat, gk, prior) >= 3)
+      .map(([gk, g]) => ({ key: gk, name: g.name, typical: _suggestMedian(prior.map(k => months[k].cats[cat]?.groups[gk]?.total || 0)) || 0 }))
+      : [];
+    return {
+      cat, total: c.total, budget: reviewBudgetFor(key, cat), typical,
+      delta: typical === null ? null : c.total - typical, groups, missing
+    };
+  }).sort((a, b) => (b.delta ?? b.total) - (a.delta ?? a.total));
+
+  const typicalTotal = baseline ? (baseline.total) : null;
+  return { key, total: cur.total, typicalTotal, baselineLabel, progress, comparedMonth: compareTo !== 'typical' && months[compareTo] ? compareTo : null, cats, historyMonths: prior.length };
+}
+
+// One sentence on what drove the month, naming the top categories and their biggest movers.
+function reviewHeadline(r) {
+  const k = v => fmtShort(Math.round(Math.abs(v)));
+  const sign = v => (v >= 0 ? '+' : '−') + k(v);
+  const inProgress = !!r.progress;
+  const against = r.comparedMonth ? monthLabel(r.comparedMonth).split(' ')[0] : null;
+  if (r.typicalTotal === null) {
+    const top = r.cats.slice().sort((a, b) => b.total - a.total).filter(c => c.total > 0).slice(0, 3).map(c => `${escHtml(c.cat)} ${k(c.total)}`);
+    return { tone: 'hl-warn', main: `${k(r.total)} EGP spent${inProgress ? ' so far' : ''}`, sub: `Need at least 2 earlier months to compare. Largest: ${top.join(', ')}.` };
+  }
+  const diff = r.total - r.typicalTotal;
+  const up = diff >= 0;
+  const movers = r.cats.filter(c => up ? c.delta > 0 : c.delta < 0)
+    .sort((a, b) => up ? b.delta - a.delta : a.delta - b.delta).slice(0, 3)
+    .map(c => {
+      const g = c.groups.filter(x => x.delta !== null && (up ? x.delta > 0 : x.delta < 0))
+        .sort((a, b) => up ? b.delta - a.delta : a.delta - b.delta)[0];
+      const why = g ? ` (${escHtml(g.name)} ${sign(g.delta)}${g.oneOff ? ', one-off' : g.isNew ? ', new' : ''})` : '';
+      return `<strong>${escHtml(c.cat)} ${sign(c.delta)}</strong>${why}`;
+    });
+  const pct = r.typicalTotal > 0 ? Math.round(Math.abs(diff) / r.typicalTotal * 100) : 0;
+  const near = pct < 5;
+  return {
+    tone: near ? 'hl-good' : up ? (pct >= 15 ? 'hl-over' : 'hl-warn') : 'hl-good',
+    main: near
+      ? `${k(r.total)} EGP — in line with ${against ? against : inProgress ? 'your usual pace' : 'a typical month'}`
+      : `${k(diff)} EGP ${up ? 'more' : 'less'} than ${against ? against : 'a typical month'}${inProgress ? ` at day ${r.progress.days}` : ''} (${up ? '+' : '−'}${pct}%)`,
+    sub: movers.length ? `${up ? 'Biggest drivers' : 'Biggest savings'}: ${movers.join(' · ')}` : ''
+  };
+}
+
+function reviewDeltaHtml(delta, typical) {
+  if (delta === null) return '<span class="review-delta flat">—</span>';
+  // Within 5% (or 200 EGP) of the baseline counts as "as usual".
+  if (Math.abs(delta) < Math.max(200, (typical || 0) * 0.05)) return '<span class="review-delta flat">≈ usual</span>';
+  return `<span class="review-delta ${delta > 0 ? 'up' : 'down'}">${delta > 0 ? '▲ +' : '▼ −'}${fmtShort(Math.round(Math.abs(delta)))}</span>`;
+}
+
+function reviewTagsHtml(g) {
+  return [
+    g.isLabel ? '<span class="review-tag label">Label</span>' : '',
+    g.recurring ? '<span class="review-tag">Recurring</span>' : '',
+    g.isNew ? '<span class="review-tag new">New</span>' : '',
+    g.oneOff ? '<span class="review-tag oneoff">One-off</span>' : ''
+  ].join('');
+}
+
+// Inline editor for a transfer recipient's label.
+function reviewLabelEditorHtml(person, example) {
+  const current = STATE.transferLabels[person] || '';
+  const options = [...new Set([...Object.values(STATE.transferLabels), ...TRANSFER_LABEL_SUGGESTIONS])].sort();
+  return `<div class="review-label-editor">
+    <input class="form-input" id="review-label-input" list="review-label-options" value="${escHtml(current)}"
+      placeholder="e.g. Family support" aria-label="Label for ${escHtml(example)}"
+      onkeydown="if(event.key==='Enter')saveTransferLabel(${jsArg(person)}, this.value, ${jsArg(example)})">
+    <datalist id="review-label-options">${options.map(o => `<option value="${escHtml(o)}">`).join('')}</datalist>
+    <button class="btn btn-primary btn-sm" onclick="saveTransferLabel(${jsArg(person)}, document.getElementById('review-label-input').value, ${jsArg(example)})">Save</button>
+    ${current ? `<button class="btn btn-ghost btn-sm" onclick="saveTransferLabel(${jsArg(person)}, '', ${jsArg(example)})">Remove</button>` : ''}
+    <button class="btn btn-ghost btn-sm" onclick="_review.editing='';renderMonthReview()">Cancel</button>
+  </div>`;
+}
+
+// People inside one transfer group, each with its own label control.
+function reviewPeopleHtml(g) {
+  const people = {};
+  g.items.forEach(e => {
+    const p = reviewPersonKey(e.description);
+    const row = people[p] = people[p] || { person: p, name: String(e.description || '').split(' | ')[0].trim(), total: 0, count: 0 };
+    row.total += e.amount; row.count++;
+  });
+  return Object.values(people).sort((a, b) => b.total - a.total).map(p => {
+    if (!p.person) return `<div class="review-person"><span class="review-g-name muted">No recipient name in the bank message (${p.count}×)</span><span class="review-g-amt private-val">${fmtShort(Math.round(p.total))}</span></div>`;
+    const editing = _review.editing === p.person;
+    return `<div class="review-person">
+      <span class="review-g-name"><span class="review-g-title"><bdi>${escHtml(p.name)}</bdi> <span class="muted">· ${p.count}×</span></span></span>
+      <span class="review-g-amt private-val">${fmtShort(Math.round(p.total))}</span>
+      <button class="review-label-btn" onclick="_review.editing=${jsArg(p.person)};renderMonthReview()">${STATE.transferLabels[p.person] ? 'Relabel' : 'Label'}</button>
+    </div>${editing ? reviewLabelEditorHtml(p.person, p.name) : ''}`;
+  }).join('');
+}
+
+function reviewDrillHtml(c, baselineLabel) {
+  const isTransfers = c.cat === TRANSFER_CATEGORY;
+  const rows = c.groups.map(g => {
+    const count = g.isLabel ? '' : ` <span class="muted">· ${g.count}×</span>`;
+    const tags = reviewTagsHtml(g);
+    // Transfers: a labelled group lists its people; an unlabelled recipient gets the
+    // Label button on its own row; transfers with no recipient name can't be labelled.
+    const person = isTransfers && !g.isLabel && g.key.startsWith('person:') ? g.key.slice('person:'.length) : '';
+    const labelBtn = person ? `<button class="review-label-btn" onclick="_review.editing=${jsArg(person)};renderMonthReview()">Label</button>` : '';
+    const below = !isTransfers ? ''
+      : g.isLabel ? `<div class="review-people">${reviewPeopleHtml(g)}</div>`
+      : person && _review.editing === person ? reviewLabelEditorHtml(person, g.name)
+      : g.key === 'unknown' ? '<div class="review-missing">The bank message had no recipient name, so these can\'t be labelled.</div>'
+      : '';
+    return `<div class="review-group">
+      <div class="review-g-main">
+        <span class="review-g-name"><span class="review-g-title"><bdi>${escHtml(g.name)}</bdi>${count}</span>${tags ? `<span class="review-g-tags">${tags}</span>` : ''}</span>
+        <span class="review-g-amt private-val">${fmtShort(Math.round(g.total))}</span>
+        ${reviewDeltaHtml(g.delta, g.typical)}
+        ${labelBtn}
+      </div>
+      ${below}
+    </div>`;
+  }).join('');
+  const missing = c.missing.length ? `<div class="review-missing">Usually here but not this month: ${c.missing.map(m => `${escHtml(m.name)} (~${fmtShort(Math.round(m.typical))})`).join(', ')}</div>` : '';
+  const hint = isTransfers ? `<div class="review-hint">Label a recipient once (e.g. Family support, Rent) and every transfer to them, past and future, is grouped under that label.</div>` : '';
+  return `<div class="review-drill">${hint}${rows || '<div class="muted" style="font-size:0.8rem">Nothing spent here this month.</div>'}${missing}</div>`;
+}
+
+function setReviewCompare(value) { _review.compareTo = value || 'typical'; renderMonthReview(); }
+function toggleReviewCat(cat) { _review.open[cat] = !_review.open[cat]; _review.editing = ''; renderMonthReview(); }
+
+function renderMonthReview(key = _review.key) {
+  const el = document.getElementById('month-review');
+  if (!el || !key) return;
+  if (key !== _review.key) _review = { key, compareTo: 'typical', open: {}, editing: '' };
+  const r = computeMonthReview(key, _review.compareTo);
+  const h = reviewHeadline(r);
+  const otherMonths = Object.keys(reviewSummaries()).filter(k => k !== key).sort().reverse();
+  const maxSpend = Math.max(1, ...r.cats.map(c => Math.max(c.total, c.budget || 0)));
+  const inProgress = !!r.progress;
+
+  el.innerHTML = `
+    <div class="analysis-headline ${h.tone}" style="margin-bottom:12px">
+      <div class="hl-dot"></div>
+      <div><div class="hl-main private-val">${h.main}</div>${h.sub ? `<div class="hl-sub private-val">${h.sub}</div>` : ''}</div>
+    </div>
+    <div class="review-toolbar">
+      <span>Compare with</span>
+      <select class="filter-select" onchange="setReviewCompare(this.value)" aria-label="Compare with">
+        <option value="typical"${_review.compareTo === 'typical' ? ' selected' : ''}>Typical month</option>
+        ${otherMonths.map(k => `<option value="${k}"${_review.compareTo === k ? ' selected' : ''}>${monthLabel(k)}</option>`).join('')}
+      </select>
+    </div>
+    ${inProgress && r.typicalTotal !== null ? `<div class="review-hint">Month in progress — day ${r.progress.days} of ${r.progress.length}. Compared with what was spent by day ${r.progress.days} in earlier months.</div>` : ''}
+    <div class="review-table" role="list">
+      ${r.cats.map(c => {
+        const open = !!_review.open[c.cat];
+        const pctOfBudget = c.budget > 0 ? Math.round(c.total / c.budget * 100) : null;
+        return `<div class="review-row${open ? ' open' : ''}" role="listitem">
+          <button class="review-row-head" aria-expanded="${open}" onclick="toggleReviewCat(${jsArg(c.cat)})">
+            <span class="review-cat">${escHtml(c.cat)}</span>
+            <span class="review-spent private-val">${fmtShort(Math.round(c.total))}</span>
+            ${reviewDeltaHtml(c.delta, c.typical)}
+            <svg class="review-chev" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>
+          </button>
+          <div class="review-bar" aria-hidden="true">
+            <div class="review-bar-fill${c.budget > 0 && c.total > c.budget ? ' over' : ''}" style="width:${(c.total / maxSpend * 100).toFixed(1)}%"></div>
+            ${c.typical !== null ? `<div class="review-bar-mark" title="Typical" style="left:${Math.min(100, c.typical / maxSpend * 100).toFixed(1)}%"></div>` : ''}
+          </div>
+          <div class="review-meta private-val">
+            ${c.budget > 0 ? `Budget ${fmtShort(Math.round(c.budget))} (${pctOfBudget}%)` : 'No budget'}
+            ${c.typical !== null ? ` · ${_review.compareTo === 'typical' ? (inProgress ? 'Typical by now' : 'Typical') : monthLabel(_review.compareTo).split(' ')[0]} ${fmtShort(Math.round(c.typical))}` : ''}
+          </div>
+          ${open ? reviewDrillHtml(c, r.baselineLabel) : ''}
+        </div>`;
+      }).join('') || '<div class="muted" style="font-size:0.85rem">No expenses this month.</div>'}
+    </div>
+    <div class="review-legend"><span class="review-legend-mark"></span> marker = ${escHtml(r.baselineLabel || 'typical')} · tap a category to see what's inside</div>`;
+  if (_review.editing) requestAnimationFrame(() => document.getElementById('review-label-input')?.focus());
+}
+
+async function saveTransferLabel(person, label, example = '') {
+  label = String(label || '').trim();
+  try {
+    const { data: { user } = {} } = await db.auth.getUser();
+    if (!user?.id) { showToast('Sign in to save labels.', 'error'); return; }
+    const norm_desc = PERSON_LABEL_PREFIX + person;
+    const { error } = label
+      ? await db.from('habit_overrides').upsert({ user_id: user.id, norm_desc, group_name: label, source_example: example || null }, { onConflict: 'user_id,norm_desc' })
+      : await db.from('habit_overrides').delete().eq('user_id', user.id).eq('norm_desc', norm_desc);
+    if (error) throw error;
+    if (label) STATE.transferLabels[person] = label; else delete STATE.transferLabels[person];
+    _review.editing = '';
+    showToast(label ? `${example || person} → ${label}` : `Label removed from ${example || person}`);
+    renderMonthReview();
+  } catch (err) {
+    showToast('Could not save label: ' + (err.message || err), 'error');
+  }
+}
+
 function renderMonthDive(key) {
   const content = document.getElementById('month-dive-content');
   if (!content) return;
@@ -5321,16 +5719,8 @@ function renderMonthDive(key) {
   const budgetPct  = budget > 0 ? Math.min((totalSpent/budget)*100,100).toFixed(1) : 0;
   const rate       = meta?.rate || null;
 
-  // Category breakdown
-  const byCat = {};
-  expenses.forEach(e => { byCat[e.category] = (byCat[e.category]||0) + e.amount; });
-  const catEntries = Object.entries(byCat).sort((a,b)=>b[1]-a[1]);
-  const maxCat     = catEntries[0]?.[1] || 1;
-
   // Top expense
   const topExp = [...expenses].sort((a,b)=>b.amount-a.amount)[0];
-
-  const catColors = ['#f59e0b','#22c55e','#3b82f6','#a78bfa','#f43f5e','#06b6d4','#fb923c','#84cc16','#e879f9','#94a3b8'];
 
   content.innerHTML = `
   <div class="dive-card">
@@ -5402,23 +5792,10 @@ function renderMonthDive(key) {
       </div>
     </div>
 
-    <!-- Category Breakdown -->
+    <!-- Month Review: what took the money, vs typical -->
     <div class="dive-body">
-      <div style="font-size:0.72rem;font-weight:600;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);margin-bottom:14px">Spending by Category</div>
-      ${catEntries.length ? catEntries.map(([cat,amt],i) => {
-        const pct = (amt/maxCat*100).toFixed(1);
-        const budgetAmt = base[cat] || getVisibleSpecialBudgets(config, 'analysis').find(b=>b.name===cat)?.amount || 0;
-        const color = catColors[i % catColors.length];
-        return `
-        <div class="dive-cat-row">
-          <div class="dive-cat-label" title="${escHtml(cat)}">${escHtml(cat)}</div>
-          <div class="dive-cat-bar-track">
-            <div class="dive-cat-bar-fill" data-dive-w="${pct}" style="width:0%;background:${color}${budgetAmt&&amt>budgetAmt?';background:#ef4444':''}"></div>
-          </div>
-          <div class="dive-cat-amt private-val">${fmtShort(amt)}</div>
-          ${budgetAmt?`<div style="font-size:0.68rem;color:var(--muted);min-width:45px;text-align:right">/${fmtShort(budgetAmt)}</div>`:'<div style="min-width:45px"></div>'}
-        </div>`;
-      }).join('') : `<div style="color:var(--muted);font-size:0.85rem">No expenses this month.</div>`}
+      <div style="font-size:0.72rem;font-weight:600;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);margin-bottom:14px">Where the money went</div>
+      <div id="month-review"></div>
 
       <!-- Planned vs Unplanned mini chart -->
       ${totalSpent > 0 ? `
@@ -5436,13 +5813,12 @@ function renderMonthDive(key) {
     </div>
   </div>`;
 
-  // Animate bars
+  renderMonthReview(key);
+
+  // Animate the budget bar
   setTimeout(() => {
     const main = document.getElementById('dive-bar-main');
     if (main) main.style.width = Math.min(parseFloat(budgetPct),100) + '%';
-    document.querySelectorAll('.dive-cat-bar-fill[data-dive-w]').forEach(el => {
-      el.style.width = el.getAttribute('data-dive-w') + '%';
-    });
   }, 80);
 }
 

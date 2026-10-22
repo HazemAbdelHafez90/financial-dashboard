@@ -1392,6 +1392,45 @@ tr:hover td { background: rgba(255,255,255,0.025); }
 .hl-good .hl-dot { background: var(--green); box-shadow: 0 0 6px rgba(34,212,122,0.5); }
 .hl-warn .hl-dot { background: var(--amber); box-shadow: 0 0 6px rgba(245,166,35,0.5); }
 .hl-over .hl-dot { background: var(--red);   box-shadow: 0 0 6px rgba(240,83,74,0.5); }
+
+/* Catch-up banner (Home) + catch-up month table */
+.catchup-banner {
+  display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+  margin-bottom: 14px; padding: 14px 16px;
+  border-radius: var(--radius-md);
+  border: 1px solid rgba(245,166,35,0.35); background: rgba(245,166,35,0.06);
+}
+.catchup-banner-text { flex: 1 1 220px; min-width: 0; font-size: 0.85rem; line-height: 1.45; }
+.catchup-banner-text strong { color: var(--amber); }
+.catchup-row {
+  display: grid; grid-template-columns: 1fr 150px; gap: 4px 12px; align-items: center;
+  padding: 10px 12px; border-bottom: 1px solid var(--border);
+}
+.catchup-row:last-child { border-bottom: none; }
+.catchup-row-name { font-weight: 600; font-size: 0.88rem; }
+.catchup-row-meta { grid-column: 1 / -1; font-size: 0.76rem; color: var(--muted); }
+.catchup-row-meta .move { color: var(--amber); font-weight: 600; }
+.catchup-row .form-input { min-height: 40px; padding: 6px 10px; font-size: 0.85rem; }
+.catchup-row-fixed { font-size: 0.82rem; color: var(--muted); text-align: right; }
+
+/* Money In card (Expenses tab) */
+.money-in { border: 1px solid rgba(34,212,122,0.25); border-radius: var(--radius-sm); overflow: hidden; }
+.money-in-head {
+  width: 100%; display: flex; justify-content: space-between; align-items: center; gap: 10px;
+  padding: 10px 14px; min-height: 44px; background: var(--green-dim);
+  border: none; color: var(--green); cursor: pointer; font: inherit; text-align: left;
+}
+.money-in-title { font-size: 0.75rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; }
+.money-in-sub { font-size: 0.72rem; font-weight: 500; opacity: 0.8; text-transform: none; letter-spacing: 0; margin-left: 6px; }
+.money-in-total { font-size: 0.85rem; font-weight: 700; white-space: nowrap; }
+.money-in-chev { transition: transform 0.2s; flex: none; }
+.money-in.collapsed .money-in-chev { transform: rotate(-90deg); }
+.money-in.collapsed .money-in-body { display: none; }
+.money-in-row { display: flex; align-items: center; gap: 10px; padding: 9px 14px; border-top: 1px solid var(--border); }
+.money-in-date { flex: none; width: 92px; font-size: 0.74rem; color: var(--muted); line-height: 1.3; }
+.money-in-desc { flex: 1; min-width: 0; text-align: left; font-size: 0.82rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.money-in-amt { flex: none; font-size: 0.82rem; font-weight: 700; color: var(--green); }
+.money-in-foot { display: flex; justify-content: space-between; align-items: center; gap: 8px; padding: 8px 14px; border-top: 1px solid var(--border); }
 .hl-main {
   font-family: 'Syne', sans-serif; font-size: 0.95rem; font-weight: 700; letter-spacing: -0.01em;
   line-height: 1.2;
@@ -2455,6 +2494,25 @@ tr:hover td { background: rgba(255,255,255,0.025); }
     <div class="modal-footer">
       <button class="btn btn-ghost" onclick="closeModal('modal-reconcile-picker')">Cancel</button>
       <button class="btn btn-primary" onclick="doReconcilePickerPreview()">Preview split</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: CATCH UP MONTHS (create the months that were never started + refile by date) -->
+<div class="modal-overlay" id="modal-catchup">
+  <div class="modal" style="max-width:520px">
+    <div class="modal-header">
+      <div class="modal-title">Catch up months</div>
+      <button class="modal-close" onclick="closeModal('modal-catchup')">✕</button>
+    </div>
+    <div class="modal-body">
+      <p style="font-size:0.8rem;color:var(--muted);margin-bottom:14px">Each month below starts on its salary date. Every expense and Money In entry dated on or after a start date (and before the next one) is filed under that month. Dates are never changed — only the budget month. Adjust any start date to your real salary day.</p>
+      <div id="catchup-rows" style="border:1px solid var(--border);border-radius:var(--radius-sm);overflow:hidden"></div>
+      <p id="catchup-summary" style="font-size:0.82rem;margin-top:12px"></p>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('modal-catchup')">Cancel</button>
+      <button class="btn btn-primary" id="btn-catchup-apply" onclick="applyCatchUp()">Apply</button>
     </div>
   </div>
 </div>
@@ -3697,6 +3755,7 @@ async function dbMoveExpensesToMonth(ids, newKey) {
   if (error) throw error;
   const idSet = new Set(ids);
   STATE.expenses.forEach(e => { if (idSet.has(e.id)) e.month_key = newKey; });
+  STATE.received.forEach(e => { if (idSet.has(e.id)) e.month_key = newKey; });
 }
 
 async function dbRenameCategory(oldName, newName) {
@@ -3937,7 +3996,24 @@ function renderHome() {
 
   const displayLabel = config.label || monthLabel(activeKey);
 
+  // Months that were never started: everything since keeps landing in this month.
+  const catchUpRows = STATE.access.canManageMonths ? getCatchUpRows() : [];
+  const behind = catchUpRows.length - 1;
+  const missingNames = catchUpRows.slice(1).map(r => monthLabel(r.key).split(' ')[0]);
+  const missingText = missingNames.length > 1
+    ? `${missingNames.slice(0, -1).join(', ')} and ${missingNames[missingNames.length - 1]}`
+    : missingNames[0];
+  const catchUpBanner = behind > 0 ? `
+    <div class="catchup-banner" role="status">
+      <div class="catchup-banner-text">
+        <strong>${behind} month${behind === 1 ? '' : 's'} behind.</strong>
+        ${missingText} ${behind === 1 ? 'was' : 'were'} never started, so all spending since ${fmtDate(catchUpRows[1].start)} is filed under ${displayLabel}.
+      </div>
+      <button class="btn btn-primary btn-sm" onclick="openCatchUpModal()">Catch up months</button>
+    </div>` : '';
+
   container.innerHTML = `
+    ${catchUpBanner}
     <div class="month-header-card">
       <div class="month-header-top">
         <div>
@@ -4517,29 +4593,70 @@ function applyBcardHint() {
 /* ══════════════════════════════════════════
    RENDER EXPENSES
 ══════════════════════════════════════════ */
+const MONEY_IN_PAGE_SIZE = 5;
+let _moneyIn = { page: 0, collapsed: false, filterSig: '' };
+
+// Money In follows the Expenses filters: month (by budget month) and search.
+// Hidden when filtering to Planned/Unplanned, since those are spend types.
 function renderMoneyIn() {
   const el = document.getElementById('money-in-section');
   if (!el) return;
-  const rows = (STATE.received || []).slice().sort((a,b) => b.date.localeCompare(a.date));
+  const search = (document.getElementById('exp-search')?.value || '').toLowerCase();
+  const typeF  = document.getElementById('exp-filter-type')?.value || '';
+  const monthF = document.getElementById('exp-filter-month')?.value || '';
+  const sig = `${search}|${typeF}|${monthF}`;
+  if (sig !== _moneyIn.filterSig) { _moneyIn.filterSig = sig; _moneyIn.page = 0; }
+
+  const rows = typeF ? [] : (STATE.received || [])
+    .filter(e => !monthF || (e.month_key || dateToMonthKey(e.date)) === monthF)
+    .filter(e => !search || (e.description || '').toLowerCase().includes(search))
+    .sort((a,b) => b.date.localeCompare(a.date));
   if (!rows.length) { el.style.display = 'none'; el.innerHTML = ''; return; }
+
   const total = rows.reduce((s,e) => s + (Number(e.amount)||0), 0);
+  const pages = Math.ceil(rows.length / MONEY_IN_PAGE_SIZE);
+  _moneyIn.page = Math.min(Math.max(_moneyIn.page, 0), pages - 1);
+  const start = _moneyIn.page * MONEY_IN_PAGE_SIZE;
+  const scope = monthF ? monthLabel(monthF) : 'all months';
+
   el.style.display = '';
   el.innerHTML = `
-    <div style="border:1px solid var(--green-glow,rgba(34,212,122,0.25));border-radius:var(--radius-sm);overflow:hidden">
-      <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 14px;background:var(--green-dim)">
-        <span style="font-size:0.75rem;font-weight:700;text-transform:uppercase;letter-spacing:0.05em;color:var(--green)">↓ Money In · not counted as spend</span>
-        <span style="font-size:0.85rem;font-weight:700;color:var(--green)">${Math.round(total).toLocaleString('en-EG')} EGP</span>
+    <div class="money-in${_moneyIn.collapsed ? ' collapsed' : ''}">
+      <button class="money-in-head" aria-expanded="${!_moneyIn.collapsed}" onclick="_moneyIn.collapsed=!_moneyIn.collapsed;renderMoneyIn()">
+        <span class="money-in-title">↓ Money In<span class="money-in-sub">${rows.length} · ${scope} · not counted as spend</span></span>
+        <span style="display:flex;align-items:center;gap:8px">
+          <span class="money-in-total private-val">+${Math.round(total).toLocaleString('en-EG')} EGP</span>
+          <svg class="money-in-chev" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>
+        </span>
+      </button>
+      <div class="money-in-body">
+        ${rows.slice(start, start + MONEY_IN_PAGE_SIZE).map(e => `<div class="money-in-row">
+          <span class="money-in-date">${fmtDate(e.date)}${monthF ? '' : `<br>${monthLabel(e.month_key || dateToMonthKey(e.date))}`}</span>
+          <span class="money-in-desc" dir="auto">${escAttr(e.description || e.category || '')}</span>
+          <span class="money-in-amt private-val">+${Math.round(Number(e.amount)||0).toLocaleString('en-EG')}</span>
+          <button class="btn btn-ghost btn-sm" style="flex:none;padding:2px 6px" onclick="deleteExpense('${e.id}')" title="Delete" aria-label="Delete entry">✕</button>
+        </div>`).join('')}
+        ${pages > 1 ? `<div class="money-in-foot">
+          <span class="exp-pagination-info">${start + 1}–${Math.min(start + MONEY_IN_PAGE_SIZE, rows.length)} of ${rows.length}</span>
+          <div style="display:flex;gap:6px">
+            <button class="page-btn" onclick="_moneyIn.page--;renderMoneyIn()" ${_moneyIn.page === 0 ? 'disabled' : ''}>← Prev</button>
+            <button class="page-btn" onclick="_moneyIn.page++;renderMoneyIn()" ${_moneyIn.page === pages - 1 ? 'disabled' : ''}>Next →</button>
+          </div>
+        </div>` : ''}
       </div>
-      ${rows.map(e => `<div style="display:flex;align-items:center;gap:10px;padding:9px 14px;border-top:1px solid var(--border)">
-        <span style="flex:none;width:78px;font-size:0.74rem;color:var(--muted)">${fmtDate(e.date)}</span>
-        <span style="flex:1;min-width:0;font-size:0.82rem;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${(e.description||e.category||'').replace(/</g,'&lt;')}</span>
-        <span style="flex:none;font-size:0.82rem;font-weight:700;color:var(--green)">+${Math.round(Number(e.amount)||0).toLocaleString('en-EG')}</span>
-        <button class="btn btn-ghost btn-sm" style="flex:none;padding:2px 6px" onclick="deleteExpense('${e.id}')" title="Delete">✕</button>
-      </div>`).join('')}
     </div>`;
 }
 
+let _expMonthDefaulted = false;
+
 function renderExpenses() {
+  // First render after load: open on the active month rather than all-time.
+  const monthSelInit = document.getElementById('exp-filter-month');
+  const activeKeyInit = STATE.loaded ? getActiveKey() : null;
+  if (!_expMonthDefaulted && monthSelInit && activeKeyInit) {
+    _expMonthDefaulted = true;
+    monthSelInit.innerHTML = `<option value="${escAttr(activeKeyInit)}" selected></option>`;
+  }
   renderMoneyIn();
   const expenses = STATE.expenses;
   const search   = (document.getElementById('exp-search')?.value||'').toLowerCase();
@@ -6897,6 +7014,163 @@ async function applyReconcile() {
   } catch(err) {
     showToast('Error: '+err.message, 'error');
     if (btn) { btn.disabled = false; updateReconcileButton(); }
+  }
+}
+
+/* ══════════════════════════════════════════
+   CATCH UP MONTHS
+   When months were never started, everything since keeps landing in the old
+   active month. This proposes one month per salary cycle from the active month
+   up to today, then files every entry by date into its cycle and makes the
+   newest month active.
+══════════════════════════════════════════ */
+
+// Local-calendar YYYY-MM-DD (toISOString would shift to UTC and can return yesterday).
+function localDateStr(d = new Date()) {
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+}
+
+// Same day-of-month n months later, clamped to the month's length (Jan 31 + 1 → Feb 28).
+function addMonthsToDate(dateStr, n) {
+  const [y, m, d] = dateStr.split('-').map(Number);
+  const lastDay = new Date(y, m - 1 + n + 1, 0).getDate();
+  return localDateStr(new Date(y, m - 1 + n, Math.min(d, lastDay)));
+}
+
+// One row per cycle: the active month, then every following month whose start has passed.
+function getCatchUpRows() {
+  const activeKey = getActiveKey();
+  const start = activeKey && STATE.months[activeKey]?.startDate;
+  if (!start) return [];
+  const today = localDateStr();
+  const rows = [{ key: activeKey, start }];
+  for (let i = 1; i <= 24; i++) {
+    const next = addMonthsToDate(start, i);
+    if (next > today) break;
+    rows.push({ key: nextMonthKey(rows[rows.length - 1].key), start: next });
+  }
+  return rows;
+}
+
+// Which month each entry belongs in, given the cycle start dates. Entries dated
+// before the first start are left alone (the two-month reconciler covers that edge).
+function computeCatchUpPlan(rows) {
+  const perMonth = Object.fromEntries(rows.map(r => [r.key, { count: 0, total: 0, moving: 0 }]));
+  const targets = {};
+  [...STATE.expenses, ...STATE.received].forEach(e => {
+    if (!e.date || e.date < rows[0].start || !canAddExpenseToCategory(e.category)) return;
+    let key = rows[0].key;
+    rows.forEach(r => { if (e.date >= r.start) key = r.key; });
+    perMonth[key].count++;
+    if (e.type !== 'Received') perMonth[key].total += Number(e.amount) || 0;
+    if ((e.month_key || dateToMonthKey(e.date)) !== key) {
+      targets[e.id] = key;
+      perMonth[key].moving++;
+    }
+  });
+  return { perMonth, targets };
+}
+
+let _catchUpRows = [];
+
+function openCatchUpModal() {
+  if (!STATE.access.canManageMonths) {
+    showToast('You do not have permission to manage months.', 'error');
+    return;
+  }
+  _catchUpRows = getCatchUpRows();
+  if (_catchUpRows.length < 2) { showToast('Months are up to date.'); return; }
+  renderCatchUp();
+  openModal('modal-catchup');
+}
+
+function setCatchUpStart(idx, value) {
+  if (_catchUpRows[idx] && value) _catchUpRows[idx].start = value;
+  renderCatchUp();
+}
+
+function catchUpError() {
+  for (let i = 1; i < _catchUpRows.length; i++) {
+    if (!_catchUpRows[i].start || _catchUpRows[i].start <= _catchUpRows[i-1].start) {
+      return `${monthLabel(_catchUpRows[i].key)} must start after ${monthLabel(_catchUpRows[i-1].key)}.`;
+    }
+  }
+  return '';
+}
+
+function renderCatchUp() {
+  const rowsEl = document.getElementById('catchup-rows');
+  const summary = document.getElementById('catchup-summary');
+  const btn = document.getElementById('btn-catchup-apply');
+  if (!rowsEl) return;
+  const error = catchUpError();
+  const plan = error ? null : computeCatchUpPlan(_catchUpRows);
+  const last = _catchUpRows.length - 1;
+  rowsEl.innerHTML = _catchUpRows.map((r, i) => {
+    const pm = plan?.perMonth[r.key];
+    const tag = i === 0 ? ' · current' : (i === last ? ' · becomes active' : (STATE.months[r.key]?.startDate ? '' : ' · new'));
+    const meta = pm
+      ? `${pm.count} entr${pm.count === 1 ? 'y' : 'ies'} · ${Math.round(pm.total).toLocaleString('en-EG')} EGP spent${pm.moving ? ` · <span class="move">${pm.moving} to move here</span>` : ''}`
+      : '';
+    const startCell = i === 0
+      ? `<div class="catchup-row-fixed">Started ${fmtDate(r.start)}</div>`
+      : `<input type="date" class="form-input" value="${escAttr(r.start)}" aria-label="${escAttr(monthLabel(r.key))} start date" onchange="setCatchUpStart(${i}, this.value)">`;
+    return `<div class="catchup-row">
+      <div class="catchup-row-name">${monthLabel(r.key)}<span style="font-weight:400;color:var(--muted);font-size:0.76rem">${tag}</span></div>
+      ${startCell}
+      <div class="catchup-row-meta">${meta}</div>
+    </div>`;
+  }).join('');
+  const moving = plan ? Object.keys(plan.targets).length : 0;
+  // A month with only a salary row (no start date) was never set up, so it counts as new.
+  const created = _catchUpRows.slice(1).filter(r => !STATE.months[r.key]?.startDate).length;
+  if (summary) {
+    summary.innerHTML = error
+      ? `<span style="color:var(--red)">${error}</span>`
+      : `Creates <strong>${created}</strong> month${created === 1 ? '' : 's'}, moves <strong>${moving}</strong> entr${moving === 1 ? 'y' : 'ies'}, and makes <strong>${monthLabel(_catchUpRows[last].key)}</strong> the active month.`;
+  }
+  if (btn) btn.disabled = !!error;
+}
+
+async function applyCatchUp() {
+  if (catchUpError() || _catchUpRows.length < 2) return;
+  const rows = _catchUpRows;
+  const { targets } = computeCatchUpPlan(rows);
+  const btn = document.getElementById('btn-catchup-apply');
+  if (btn) { btn.disabled = true; btn.textContent = 'Applying…'; }
+  try {
+    // 1. Create/update the missing months; the newest one becomes active. Done before
+    //    archiving the old month so there is never a moment with no active month.
+    const last = rows.length - 1;
+    for (let i = 1; i <= last; i++) {
+      const existing = STATE.months[rows[i].key] || {};
+      await dbUpsertMonth(rows[i].key, {
+        ...existing,
+        started: i === last,
+        startDate: rows[i].start,
+        label: existing.label || monthLabel(rows[i].key),
+        specificBudgets: existing.specificBudgets || []
+      });
+    }
+    // 2. Archive the month that was active.
+    await dbUpsertMonth(rows[0].key, { ...STATE.months[rows[0].key], started: false });
+    // 3. Refile entries by date.
+    const byTarget = {};
+    Object.entries(targets).forEach(([id, key]) => (byTarget[key] = byTarget[key] || []).push(id));
+    for (const [key, ids] of Object.entries(byTarget)) {
+      await dbMoveExpensesToMonth(ids, key);
+    }
+    closeModal('modal-catchup');
+    _expMonthDefaulted = false; // reopen Expenses on the new active month
+    showToast(`Caught up to ${monthLabel(rows[last].key)} — ${Object.keys(targets).length} entries refiled.`);
+    renderHome();
+    renderExpenses();
+    renderArchivedMonths();
+    switchTab('home');
+  } catch (err) {
+    showToast('Error: ' + err.message, 'error');
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = 'Apply'; }
   }
 }
 

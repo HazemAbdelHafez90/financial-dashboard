@@ -10,10 +10,12 @@ function json(data, status = 200) {
   });
 }
 
+// ٫ is the Arabic decimal point; ٬ and ، are used as thousands separators.
 function normalizeArabicDigits(value = '') {
   return String(value)
     .replace(/[٠-٩]/g, d => '٠١٢٣٤٥٦٧٨٩'.indexOf(d))
-    .replace(/[٫،]/g, '.');
+    .replace(/٫/g, '.')
+    .replace(/(\d)[٬،](?=\d{3}\b)/g, '$1,');
 }
 
 function normalizeWhitespace(value = '') {
@@ -28,22 +30,24 @@ function sanitizeMessage(message = '') {
    Capture group 1 = currency (may be absent → assume EGP).
    Capture group 2 = numeric amount. */
 const CURRENCY_TOKEN = '(EGP|USD|EUR|GBP|SAR|AED|CHF|JPY|جم|جنيه)';
+// Amount with optional thousands commas: 660, 1250, 1,250.00
+const AMOUNT = '((?:[0-9]{1,3}(?:,[0-9]{3})+|[0-9]+)(?:\\.[0-9]+)?)';
 
 function extractAmountAndCurrency(text) {
   const patterns = [
-    new RegExp(`تم سحب مبلغ\\s*${CURRENCY_TOKEN}?\\s*([0-9]+(?:\\.[0-9]+)?)`, 'i'),
-    new RegExp(`تم تنفيذ تحويل(?:\\s+لحظي)?\\s+بمبلغ\\s*${CURRENCY_TOKEN}?\\s*([0-9]+(?:\\.[0-9]+)?)`, 'i'),
-    new RegExp(`تم تحويل مبلغ\\s*${CURRENCY_TOKEN}?\\s*([0-9]+(?:\\.[0-9]+)?)`, 'i'),
-    new RegExp(`تم خصم\\s*(?:مبلغ\\s*)?${CURRENCY_TOKEN}?\\s*([0-9]+(?:\\.[0-9]+)?)`, 'i'),
-    new RegExp(`تم خصم مبلغ\\s*${CURRENCY_TOKEN}?\\s*([0-9]+(?:\\.[0-9]+)?)`, 'i'),
-    new RegExp(`بمبلغ\\s*${CURRENCY_TOKEN}?\\s*([0-9]+(?:\\.[0-9]+)?)`, 'i')
+    new RegExp(`تم سحب مبلغ\\s*${CURRENCY_TOKEN}?\\s*${AMOUNT}`, 'i'),
+    new RegExp(`تم تنفيذ تحويل(?:\\s+لحظي)?\\s+بمبلغ\\s*${CURRENCY_TOKEN}?\\s*${AMOUNT}`, 'i'),
+    new RegExp(`تم تحويل مبلغ\\s*${CURRENCY_TOKEN}?\\s*${AMOUNT}`, 'i'),
+    new RegExp(`تم خصم\\s*(?:مبلغ\\s*)?${CURRENCY_TOKEN}?\\s*${AMOUNT}`, 'i'),
+    new RegExp(`تم خصم مبلغ\\s*${CURRENCY_TOKEN}?\\s*${AMOUNT}`, 'i'),
+    new RegExp(`بمبلغ\\s*${CURRENCY_TOKEN}?\\s*${AMOUNT}`, 'i')
   ];
   for (const pattern of patterns) {
     const match = text.match(pattern);
     if (match) {
       const rawCur = (match[1] || '').toUpperCase();
       const currency = (!rawCur || rawCur === 'جم' || rawCur === 'جنيه') ? 'EGP' : rawCur;
-      return { amount: Number.parseFloat(match[2]), currency };
+      return { amount: Number.parseFloat(match[2].replace(/,/g, '')), currency };
     }
   }
   return null;
@@ -55,13 +59,18 @@ function extractAmount(text) {
   return r ? r.amount : null;
 }
 
+// The server runs in UTC; the user is in Cairo, so "today" must be Cairo's date.
+function todayInCairo() {
+  return new Date().toLocaleDateString('en-CA', { timeZone: 'Africa/Cairo' });
+}
+
 function extractDate(text) {
   // YYYY/MM/DD or YYYY-MM-DD (e.g. "في تاريخ 2026/06/23")
   const iso = text.match(/(?:في|بتاريخ)(?:\s+تاريخ)?\s*([0-9]{4})[\/-]([0-9]{2})[\/-]([0-9]{2})/);
   if (iso) return `${iso[1]}-${iso[2]}-${iso[3]}`;
   // DD/MM/YYYY or DD-MM-YY (e.g. "بتاريخ 18-07-2026", "في 02/07/26")
   const match = text.match(/(?:في|بتاريخ)\s*([0-9]{2})[\/-]([0-9]{2})[\/-]([0-9]{2,4})/);
-  if (!match) return new Date().toISOString().slice(0, 10);
+  if (!match) return todayInCairo();
   const day = match[1];
   const month = match[2];
   const year = match[3].length === 2 ? `20${match[3]}` : match[3];

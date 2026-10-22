@@ -2896,10 +2896,25 @@ function resetAppState() {
   STATE.summaryPage = 0;
 }
 
+// ٫ is the Arabic decimal point; ٬ / ، / , between digit groups are thousands separators.
 function parseArabicDigits(value = '') {
   return String(value)
     .replace(/[٠-٩]/g, d => '٠١٢٣٤٥٦٧٨٩'.indexOf(d))
-    .replace(/[٫،]/g, '.');
+    .replace(/٫/g, '.')
+    .replace(/(\d)[٬،,](?=\d{3}(?!\d))/g, '$1');
+}
+
+// Value → JS literal safe inside any inline handler attribute (onclick='…' or onclick="…").
+function jsArg(v) { return escHtml(JSON.stringify(v)); }
+
+// Text → HTML-safe string, for anything typed by a user or parsed from a bank SMS.
+function escHtml(v = '') {
+  return String(v ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
 }
 
 function normalizeShortcutAmount(value) {
@@ -2959,7 +2974,7 @@ function getLatestFxRateToEgp(currency) {
 }
 
 function normalizeShortcutDate(value) {
-  if (!value) return new Date().toISOString().split('T')[0];
+  if (!value) return localDateStr();
   const raw = parseArabicDigits(String(value).trim());
   if (/^\d{4}-\d{2}-\d{2}$/.test(raw)) return raw;
   const slash = raw.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{2,4})$/);
@@ -2969,7 +2984,7 @@ function normalizeShortcutDate(value) {
     const year = slash[3].length === 2 ? `20${slash[3]}` : slash[3];
     return `${year}-${month}-${day}`;
   }
-  return new Date().toISOString().split('T')[0];
+  return localDateStr();
 }
 
 function normalizeShortcutType(value) {
@@ -2978,8 +2993,11 @@ function normalizeShortcutType(value) {
   return v === 'unplanned' ? 'Unplanned' : 'Planned';
 }
 
+// URLSearchParams already decodes once; some Shortcuts double-encode, so try a second
+// decode but keep the raw text when it isn't valid (e.g. "50% OFF").
 function cleanShortcutText(value = '') {
-  return decodeURIComponent(String(value || '').replace(/\+/g, ' ')).trim();
+  const raw = String(value || '');
+  try { return decodeURIComponent(raw).trim(); } catch (_) { return raw.trim(); }
 }
 
 function inferShortcutCategory(merchant = '') {
@@ -3097,9 +3115,9 @@ function dateToMonthKey(dateStr) {
   if (!dateStr) return null;
   const [y, m, d] = dateStr.split('-').map(Number);
   if (d >= 19) {
-    // Shift forward one month (JS months are 0-indexed, passing 1-based m gives next month)
-    const next = new Date(y, m, 1); // e.g. "2025-01-20" → new Date(2025,1,1) = Feb 2025
-    return next.toISOString().substring(0, 7);
+    // Plain arithmetic: toISOString() would convert local midnight to UTC and land on the
+    // previous day (and month) for anyone east of UTC, e.g. Cairo.
+    return m === 12 ? `${y + 1}-01` : `${y}-${String(m + 1).padStart(2, '0')}`;
   }
   return dateStr.substring(0, 7);
 }
@@ -3608,7 +3626,7 @@ async function initDB() {
   resetAppState();
   try {
     const [expRes, baseRes, monthRes, incomeRes, cashRes, assetRes, recvRes, snapRes, habitOvRes] = await Promise.all([
-      db.from('expenses').select('*').order('date', { ascending: false }).limit(9999),
+      fetchAllExpenses(),
       db.from('base_budgets').select('*'),
       db.from('month_configs').select('*'),
       STATE.access.canViewIncome ? db.from('month_income').select('*') : Promise.resolve({ data: [] }),
@@ -3700,6 +3718,21 @@ async function initDB() {
   }
 }
 
+// Supabase caps each select at 1,000 rows (API "Max rows"), so page through with
+// .range() until a short page comes back. Same {data, error} shape as one query.
+async function fetchAllExpenses() {
+  const PAGE = 1000;
+  const data = [];
+  for (let from = 0; ; from += PAGE) {
+    const { data: rows, error } = await db.from('expenses').select('*')
+      .order('date', { ascending: false }).order('id', { ascending: true })
+      .range(from, from + PAGE - 1);
+    if (error) return { data: null, error };
+    data.push(...(rows || []));
+    if (!rows || rows.length < PAGE) return { data, error: null };
+  }
+}
+
 async function seedDefaultBudgets() {
   const rows = Object.entries(DEFAULT_BASE).map(([category, amount]) => ({ category, amount }));
   const { error } = await db.from('base_budgets').insert(rows);
@@ -3760,14 +3793,18 @@ async function dbMoveExpensesToMonth(ids, newKey) {
 
 async function dbRenameCategory(oldName, newName) {
   if (!canEditBudgetCategory(oldName)) throw new Error('You do not have permission to rename this budget category.');
-  // Update base_budgets row
+  // Create the new row first and delete the old one last, so a failure part-way
+  // (e.g. no permission row for the new name yet) never loses the budget.
   const amount = STATE.base[oldName];
-  const { error: e1 } = await db.from('base_budgets').delete().eq('category', oldName);
-  if (e1) throw e1;
-  const { error: e2 } = await db.from('base_budgets').insert({ category: newName, amount });
-  if (e2) throw e2;
-  // Update all expenses with old category
-  const { error: e3 } = await db.from('expenses').update({ category: newName }).eq('category', oldName);
+  const { error: e1 } = await db.from('base_budgets').insert({ category: newName, amount });
+  if (e1) throw new Error(`Could not create "${newName}": ${e1.message}. Nothing was changed.`);
+  // Move all expenses with the old category
+  const { error: e2 } = await db.from('expenses').update({ category: newName }).eq('category', oldName);
+  if (e2) {
+    await db.from('base_budgets').delete().eq('category', newName);
+    throw new Error(`Could not move expenses to "${newName}": ${e2.message}. Nothing was changed.`);
+  }
+  const { error: e3 } = await db.from('base_budgets').delete().eq('category', oldName);
   if (e3) throw e3;
   // Update STATE
   STATE.base[newName] = STATE.base[oldName];
@@ -4109,8 +4146,8 @@ function buildBCard(name, budget, spent, pct, isSpecial=false, isOverride=false,
   const label = pct>=100?'OVER':pct>=85?'HIGH':pct>=70?'WARN':'OK';
 
   /* All cards now open the drill-down sheet on tap */
-  const drillArgs = `${JSON.stringify(name)},${budget},${spent},${pct},${isSpecial},${JSON.stringify(specialMonthKey)},${JSON.stringify(String(specialId))}`;
-  const clickAttrs = ` role="button" tabindex="0" title="View ${name} expenses" onclick='openBudgetDrilldown(${drillArgs})' onkeydown='if(event.key==="Enter"||event.key===" "){event.preventDefault();openBudgetDrilldown(${drillArgs});}'`;
+  const drillArgs = escHtml(`${JSON.stringify(name)},${budget},${spent},${pct},${isSpecial},${JSON.stringify(specialMonthKey)},${JSON.stringify(String(specialId))}`);
+  const clickAttrs = ` role="button" tabindex="0" title="View ${escHtml(name)} expenses" onclick="openBudgetDrilldown(${drillArgs})" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();openBudgetDrilldown(${drillArgs});}"`;
 
   const r = 32;
   const cx = 40, cy = 48;
@@ -4119,7 +4156,7 @@ function buildBCard(name, budget, spent, pct, isSpecial=false, isOverride=false,
 
   return `
     <div class="bcard ${cls}" data-gauge-fill="${fill.toFixed(2)}" data-gauge-full="${full.toFixed(2)}" data-gauge-color="${color}"${clickAttrs}>
-      <div class="bcard-name">${name}${isSpecial?`<span style="font-size:0.6rem;color:var(--purple);background:var(--purple-dim);padding:1px 5px;border-radius:100px;font-weight:700;margin-left:4px">SP</span>`:''}${isOverride?`<span title="This month's override (base budget unchanged)" style="font-size:0.6rem;color:var(--blue);background:rgba(59,130,246,0.14);padding:1px 5px;border-radius:100px;font-weight:700;margin-left:4px">OVR</span>`:''}</div>
+      <div class="bcard-name">${escHtml(name)}${isSpecial?`<span style="font-size:0.6rem;color:var(--purple);background:var(--purple-dim);padding:1px 5px;border-radius:100px;font-weight:700;margin-left:4px">SP</span>`:''}${isOverride?`<span title="This month's override (base budget unchanged)" style="font-size:0.6rem;color:var(--blue);background:rgba(59,130,246,0.14);padding:1px 5px;border-radius:100px;font-weight:700;margin-left:4px">OVR</span>`:''}</div>
       <div class="bcard-gauge">
         <svg viewBox="0 0 80 48">
           <path class="bcard-gauge-arc-bg"
@@ -4223,7 +4260,7 @@ function openBudgetDrilldown(name, budget, spent, pct, isSpecial, specialMonthKe
   /* ── Expense rows ── */
   const list = document.getElementById('bds-list');
   if (!rows.length) {
-    list.innerHTML = `<div class="bds-empty">No expenses recorded for ${name} this month.</div>`;
+    list.innerHTML = `<div class="bds-empty">No expenses recorded for ${escHtml(name)} this month.</div>`;
   } else {
     list.innerHTML = rows.map(e => {
       const d = new Date(e.date + 'T00:00:00');
@@ -4231,7 +4268,7 @@ function openBudgetDrilldown(name, budget, spent, pct, isSpecial, specialMonthKe
       const typeClass = (e.type||'Planned').toLowerCase();
       return `<div class="bds-row">
         <span class="bds-row-date">${dateLbl}</span>
-        <span class="bds-row-desc">${e.description||e.category}</span>
+        <span class="bds-row-desc">${escHtml(e.description||e.category)}</span>
         <span class="bds-row-type ${typeClass}">${e.type||'Planned'}</span>
         <span class="bds-row-amt private-val">${e.amount.toLocaleString('en-EG')}</span>
       </div>`;
@@ -4328,7 +4365,7 @@ function bdsSwitchToEditBudget() {
         Budget for ${monthLbl}
       </div>
       <div class="form-group" style="margin-bottom:0">
-        <label class="form-label">${name} — amount (EGP)</label>
+        <label class="form-label">${escHtml(name)} — amount (EGP)</label>
         <input type="number" class="form-input" id="bds-budget-input"
           value="${budget}" min="0" step="50" inputmode="decimal"
           onkeydown="if(event.key==='Enter')bdsSaveEditBudget()"
@@ -4466,7 +4503,7 @@ function _renderBudgetSheetView(cat) {
   document.getElementById('bgt-sheet-body').innerHTML = `
     <div style="padding-top:4px;margin-bottom:2px">
       <div style="font-size:0.68rem;color:var(--muted);text-transform:uppercase;letter-spacing:0.07em;font-weight:700;margin-bottom:6px">Base Budget</div>
-      <div style="font-size:1.4rem;font-weight:800;font-family:'Syne',sans-serif;color:var(--text);letter-spacing:-0.02em">${cat}</div>
+      <div style="font-size:1.4rem;font-weight:800;font-family:'Syne',sans-serif;color:var(--text);letter-spacing:-0.02em">${escHtml(cat)}</div>
     </div>
     <div style="font-size:2.6rem;font-weight:800;color:var(--amber);font-variant-numeric:tabular-nums;margin:16px 0 28px;letter-spacing:-0.03em;line-height:1">
       ${Number(amt).toLocaleString('en-EG')}
@@ -4496,7 +4533,7 @@ function budgetSheetSwitchToEdit() {
   const amt = STATE.base[cat] ?? 0;
   document.getElementById('bgt-sheet-body').innerHTML = `
     <div style="font-size:0.68rem;color:var(--muted);text-transform:uppercase;letter-spacing:0.07em;font-weight:700;margin-bottom:6px;padding-top:4px">Edit Amount</div>
-    <div style="font-size:1.1rem;font-weight:700;font-family:'Syne',sans-serif;margin-bottom:18px">${cat}</div>
+    <div style="font-size:1.1rem;font-weight:700;font-family:'Syne',sans-serif;margin-bottom:18px">${escHtml(cat)}</div>
     <div class="form-group">
       <label class="form-label">Monthly Amount (EGP)</label>
       <input type="number" class="form-input" id="bgt-sheet-amount" value="${amt}" min="0" step="50" inputmode="decimal"
@@ -4506,7 +4543,7 @@ function budgetSheetSwitchToEdit() {
   document.getElementById('bgt-sheet-footer').innerHTML = `
     <div style="display:flex;gap:10px">
       <button class="btn btn-ghost" style="flex:1;justify-content:center;min-height:48px"
-        onclick="_renderBudgetSheetView(${JSON.stringify(cat)})">Cancel</button>
+        onclick="_renderBudgetSheetView(${jsArg(cat)})">Cancel</button>
       <button class="btn btn-primary" style="flex:2;justify-content:center;min-height:48px"
         onclick="saveBudgetSheet()">Save</button>
     </div>
@@ -4528,7 +4565,7 @@ function budgetSheetSwitchToRename() {
   document.getElementById('bgt-sheet-footer').innerHTML = `
     <div style="display:flex;gap:10px">
       <button class="btn btn-ghost" style="flex:1;justify-content:center;min-height:48px"
-        onclick="_renderBudgetSheetView(${JSON.stringify(cat)})">Cancel</button>
+        onclick="_renderBudgetSheetView(${jsArg(cat)})">Cancel</button>
       <button class="btn btn-primary" style="flex:2;justify-content:center;min-height:48px"
         onclick="saveBudgetSheetRename()">Rename</button>
     </div>
@@ -4795,8 +4832,8 @@ function renderExpenses() {
     return `
       <tr class="expense-row" id="exp-row-${e.id}" onclick="onExpenseRowClick('${e.id}')">
         <td style="white-space:nowrap">${fmtDate(e.date)}<div style="font-size:0.68rem;color:var(--muted);margin-top:3px">${monthLabel(assignedMonth)}</div></td>
-        <td><span class="cat-pill ${categoryPillClass(e.category)}">${e.category}</span></td>
-        <td style="color:var(--muted);max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${e.description||'—'}</td>
+        <td><span class="cat-pill ${categoryPillClass(e.category)}">${escHtml(e.category)}</span></td>
+        <td style="color:var(--muted);max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escHtml(e.description||'—')}</td>
         <td style="font-weight:700;color:var(--amber)" class="private-val">${e.amount.toLocaleString('en-EG')}</td>
         <td><span class="type-pill ${(e.type||'Planned').toLowerCase()}">${e.type||'Planned'}</span></td>
         <td>
@@ -4874,34 +4911,34 @@ function renderBaseBudgetTable() {
     const isEditing = _budgetEditingCategory === cat;
     const isRenaming = _budgetRenamingCategory === cat;
     return `
-    <tr id="brow-${key}" onclick='openBudgetSheet(${JSON.stringify(cat)})' style="cursor:pointer">
+    <tr id="brow-${key}" onclick='openBudgetSheet(${jsArg(cat)})' style="cursor:pointer">
       <td id="bname-${key}" style="font-weight:600">${isRenaming ? `
         <div style="display:flex;gap:8px;align-items:center">
           <input type="text" class="inline-edit-input" id="rename-${key}" value="${escAttr(_budgetRenameDraft)}" style="width:160px"
-            oninput='setBudgetRenameDraft(${JSON.stringify(cat)}, this.value)'
-            onkeydown='renameKeydown(event, ${JSON.stringify(cat)})'>
-          <button class="btn btn-primary btn-sm" onclick='saveCategoryRename(${JSON.stringify(cat)})'>Save</button>
-          <button class="btn btn-ghost btn-sm" onclick='cancelCategoryRename(${JSON.stringify(cat)})'>Cancel</button>
+            oninput='setBudgetRenameDraft(${jsArg(cat)}, this.value)'
+            onkeydown='renameKeydown(event, ${jsArg(cat)})'>
+          <button class="btn btn-primary btn-sm" onclick='saveCategoryRename(${jsArg(cat)})'>Save</button>
+          <button class="btn btn-ghost btn-sm" onclick='cancelCategoryRename(${jsArg(cat)})'>Cancel</button>
         </div>` : cat}</td>
       <td id="bcell-${key}">${isEditing ? `
         <div style="display:flex;gap:8px;align-items:center">
           <input type="number" class="inline-edit-input" id="edit-${key}" value="${escAttr(_budgetEditDraft)}" min="0"
-            oninput='setBudgetEditDraft(${JSON.stringify(cat)}, this.value)'
-            onkeydown='budgetKeydown(event, ${JSON.stringify(cat)})'>
-          <button class="btn btn-primary btn-sm" onclick='saveBudgetEdit(${JSON.stringify(cat)})'>Save</button>
-          <button class="btn btn-ghost btn-sm" onclick='cancelBudgetEdit(${JSON.stringify(cat)})'>Cancel</button>
+            oninput='setBudgetEditDraft(${jsArg(cat)}, this.value)'
+            onkeydown='budgetKeydown(event, ${jsArg(cat)})'>
+          <button class="btn btn-primary btn-sm" onclick='saveBudgetEdit(${jsArg(cat)})'>Save</button>
+          <button class="btn btn-ghost btn-sm" onclick='cancelBudgetEdit(${jsArg(cat)})'>Cancel</button>
         </div>` : `${Number(amt).toLocaleString('en-EG')} EGP`}</td>
       <td>
         ${canEdit ? (isEditing || isRenaming ? '<span style="color:var(--muted);font-size:0.74rem">Editing…</span>' : `<div class="row-actions">
-          <button class="btn btn-ghost btn-sm" onclick='event.stopPropagation();openBudgetSheet(${JSON.stringify(cat)},"edit")'>
+          <button class="btn btn-ghost btn-sm" onclick='event.stopPropagation();openBudgetSheet(${jsArg(cat)},"edit")'>
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
             Edit
           </button>
-          <button class="btn btn-ghost btn-sm" onclick='event.stopPropagation();openBudgetSheet(${JSON.stringify(cat)},"rename")' title="Rename category">
+          <button class="btn btn-ghost btn-sm" onclick='event.stopPropagation();openBudgetSheet(${jsArg(cat)},"rename")' title="Rename category">
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"/></svg>
             Rename
           </button>
-          <button class="del-btn" onclick='event.stopPropagation();deleteBudgetCategory(${JSON.stringify(cat)})' title="Delete category" aria-label="Delete ${cat} budget" style="margin-left:4px">
+          <button class="del-btn" onclick='event.stopPropagation();deleteBudgetCategory(${jsArg(cat)})' title="Delete category" aria-label="Delete ${escHtml(cat)} budget" style="margin-left:4px">
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4h6v2"/></svg>
           </button>
         </div>`) : '<span style="color:var(--muted);font-size:0.74rem">View only</span>'}
@@ -5053,7 +5090,7 @@ function renderMonthPlanning() {
               : '';
             return `
             <div class="spec-item">
-              <span class="spec-item-name">${s.name}${badge}</span>
+              <span class="spec-item-name">${escHtml(s.name)}${badge}</span>
               <div class="spec-item-right">
                 ${deltaTxt}
                 <span class="spec-item-amt">${s.amount.toLocaleString('en-EG')}</span>
@@ -5213,8 +5250,8 @@ function renderMonthDetailTable() {
   tbody.innerHTML = sorted.map(e=>`
     <tr style="border-bottom:1px solid var(--border)" onmouseover="this.style.background='var(--bg3)'" onmouseout="this.style.background='transparent'">
       <td style="padding:10px 16px;white-space:nowrap;color:var(--muted);font-size:0.8rem">${fmtDate(e.date)}</td>
-      <td style="padding:10px 12px"><span class="cat-pill ${categoryPillClass(e.category)}">${e.category}</span></td>
-      <td style="padding:10px 12px;color:var(--muted);max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${(e.description||'').replace(/"/g,'&quot;')}">${e.description||'—'}</td>
+      <td style="padding:10px 12px"><span class="cat-pill ${categoryPillClass(e.category)}">${escHtml(e.category)}</span></td>
+      <td style="padding:10px 12px;color:var(--muted);max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${escHtml(e.description||'')}">${escHtml(e.description||'—')}</td>
       <td style="padding:10px 12px;text-align:right;font-weight:700;color:var(--amber);white-space:nowrap" class="private-val">${e.amount.toLocaleString('en-EG')}</td>
       <td style="padding:10px 12px"><span class="type-pill ${(e.type||'Planned').toLowerCase()}">${e.type||'Planned'}</span></td>
       <td style="padding:10px 12px">
@@ -5361,7 +5398,7 @@ function renderMonthDive(key) {
       <div class="dive-kpi">
         <div class="dive-kpi-label">Top Expense</div>
         <div class="dive-kpi-val private-val" style="font-size:0.88rem">${topExp?fmtShort(topExp.amount):'—'}</div>
-        <div style="font-size:0.68rem;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${topExp?topExp.description||topExp.category:'—'}</div>
+        <div style="font-size:0.68rem;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${topExp?escHtml(topExp.description||topExp.category):'—'}</div>
       </div>
     </div>
 
@@ -5374,7 +5411,7 @@ function renderMonthDive(key) {
         const color = catColors[i % catColors.length];
         return `
         <div class="dive-cat-row">
-          <div class="dive-cat-label" title="${cat}">${cat}</div>
+          <div class="dive-cat-label" title="${escHtml(cat)}">${escHtml(cat)}</div>
           <div class="dive-cat-bar-track">
             <div class="dive-cat-bar-fill" data-dive-w="${pct}" style="width:0%;background:${color}${budgetAmt&&amt>budgetAmt?';background:#ef4444':''}"></div>
           </div>
@@ -6041,7 +6078,7 @@ function renderHabitsSubGroupList() {
             return `
             <div style="display:flex;align-items:center;gap:8px;padding:5px 4px;border-bottom:1px solid var(--border2);font-size:0.78rem;border-radius:4px" onmouseover="this.style.background='var(--bg3)'" onmouseout="this.style.background='transparent'">
               <span style="color:var(--muted);font-size:0.7rem;white-space:nowrap;width:82px;flex-shrink:0;cursor:pointer" onclick="openEditExpense('${idEsc}')">${fmtDate(e.date)}</span>
-              <span style="flex:1;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0;cursor:pointer" onclick="openEditExpense('${idEsc}')" title="${String(e.description||'').replace(/"/g,'&quot;')}">${e.description ? e.description : '<span style="color:var(--muted);font-style:italic">no description</span>'}</span>
+              <span style="flex:1;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0;cursor:pointer" onclick="openEditExpense('${idEsc}')" title="${escHtml(e.description||'')}">${e.description ? escHtml(e.description) : '<span style="color:var(--muted);font-style:italic">no description</span>'}</span>
               ${(e.type||'Planned')==='Unplanned' ? '<span style="font-size:0.66rem;color:var(--red);font-weight:700">UNPL</span>' : ''}
               <span style="color:var(--amber);font-weight:600;white-space:nowrap;cursor:pointer" onclick="openEditExpense('${idEsc}')" class="private-val">${Math.round(Number(e.amount)||0).toLocaleString('en-EG')}</span>
               <select ${selectDisabled ? 'disabled' : ''} onclick="event.stopPropagation()" onchange="pickHabitGroup('${normKeyEsc}', this.value, '${exampleEsc}')" title="${selectDisabled ? 'No recognizable keyword — edit the description first' : 'Move this merchant to a different group'}" style="background:var(--bg3);border:1px solid ${hasOverride ? color : 'var(--border2)'};border-radius:6px;padding:2px 6px;cursor:${selectDisabled ? 'not-allowed' : 'pointer'};color:${hasOverride ? color : 'var(--text)'};font-size:0.7rem;flex-shrink:0;max-width:140px;appearance:auto;-webkit-appearance:menulist">
@@ -6136,7 +6173,7 @@ function openExpenseModal() {
     return;
   }
   _editingId = null;
-  const today = new Date().toISOString().split('T')[0];
+  const today = localDateStr();
   const monthKey = getActiveKey() || dateToMonthKey(today);
   buildExpenseMonthDropdown(monthKey, today);
   buildCategoryDropdown(monthKey);
@@ -6247,6 +6284,10 @@ function fillExpenseForm(expense, categoryOverride = '') {
 async function maybeHandleShortcutExpense() {
   const rawPayload = PENDING_SHORTCUT_EXPENSE || getShortcutExpenseFromUrl();
   if (!rawPayload) return;
+  // Consume the import: drop the query string so a reload (or a second sign-in
+  // event) doesn't save the same expense again.
+  PENDING_SHORTCUT_EXPENSE = null;
+  try { history.replaceState(null, '', window.location.pathname + window.location.hash); } catch (_) {}
 
   // Now that STATE is populated, run FX conversion
   const payload = finalizeShortcutPayload(rawPayload);
@@ -6284,7 +6325,8 @@ async function maybeHandleShortcutExpense() {
     // Show "processing" first so the user sees SOMETHING even if the save hangs
     showShortcutStatus('pending', `Saving ${payload.merchant}…`, payload);
     try {
-      await doAddExpense();
+      const saved = await doAddExpense();
+      if (!saved) throw new Error(_lastExpenseError || 'not saved');
       const displayAmount = payload.amount.toLocaleString('en-EG');
       const fxNote = payload.rate ? ` (from ${payload.rawAmount} ${payload.currency})` : (payload.currency && payload.currency !== 'EGP' ? ` (${payload.rawAmount} ${payload.currency} — no FX rate; saved raw)` : '');
       showShortcutStatus('success', `Saved ${payload.merchant} → ${category} — ${displayAmount} EGP${fxNote}`, payload);
@@ -6331,8 +6373,8 @@ function showShortcutStatus(kind, message, payload) {
     <div style="display:flex;align-items:flex-start;gap:10px;">
       <div style="font-size:18px;line-height:1;flex-shrink:0;">${palette.icon}</div>
       <div style="flex:1;min-width:0;">
-        <div style="font-weight:600;word-break:break-word;">${message}</div>
-        ${detailLines ? `<details style="margin-top:6px;"><summary style="cursor:pointer;font-size:12px;opacity:0.8;">Details</summary><pre style="margin:6px 0 0;font-size:11px;white-space:pre-wrap;word-break:break-word;font-family:ui-monospace,monospace;opacity:0.85;">${detailLines}</pre></details>` : ''}
+        <div style="font-weight:600;word-break:break-word;">${escHtml(message)}</div>
+        ${detailLines ? `<details style="margin-top:6px;"><summary style="cursor:pointer;font-size:12px;opacity:0.8;">Details</summary><pre style="margin:6px 0 0;font-size:11px;white-space:pre-wrap;word-break:break-word;font-family:ui-monospace,monospace;opacity:0.85;">${escHtml(detailLines)}</pre></details>` : ''}
       </div>
       <button onclick="document.getElementById('shortcut-status-banner')?.remove()" style="background:transparent;border:none;color:inherit;cursor:pointer;font-size:18px;line-height:1;padding:0 4px;flex-shrink:0;" aria-label="Dismiss">×</button>
     </div>
@@ -6353,17 +6395,21 @@ function selectType(t) {
   if (ub) ub.className = 'type-btn'+(t==='Unplanned'?' sel-unplanned':'');
 }
 
+// Returns true when saved; false (with _lastExpenseError set) on validation or DB failure.
+let _lastExpenseError = '';
 async function doAddExpense() {
+  _lastExpenseError = '';
   const date = document.getElementById('f-date')?.value;
   const amt  = parseFloat(document.getElementById('f-amount')?.value);
   const cat  = document.getElementById('f-category')?.value;
   const desc = document.getElementById('f-desc')?.value?.trim();
   const monthKey = document.getElementById('f-month')?.value || getActiveKey() || dateToMonthKey(date);
 
-  if (!date) { showToast('Please select a date','error'); return; }
-  if (isNaN(amt)||amt<=0) { showToast('Please enter a valid amount','error'); return; }
-  if (!cat) { showToast('Please select a category','error'); return; }
-  if (!monthKey) { showToast('Please select a budget month','error'); return; }
+  const invalid = !date ? 'Please select a date'
+    : (isNaN(amt) || amt <= 0) ? 'Please enter a valid amount'
+    : !cat ? 'Please select a category'
+    : !monthKey ? 'Please select a budget month' : '';
+  if (invalid) { _lastExpenseError = invalid; showToast(invalid, 'error'); return false; }
 
   const btn = document.getElementById('btn-save-expense');
   if (btn) { btn.disabled=true; btn.textContent='Saving…'; }
@@ -6390,8 +6436,11 @@ async function doAddExpense() {
     } else {
       renderArchivedMonths();
     }
+    return true;
   } catch(err) {
+    _lastExpenseError = err.message;
     showToast('Error: '+err.message,'error');
+    return false;
   } finally {
     if (btn) {
       btn.disabled = false;
@@ -6426,7 +6475,7 @@ function openStartModal() {
   const inp = document.getElementById('sm-month');
   if (inp) inp.value = key;
   const sdInp = document.getElementById('sm-start-date');
-  if (sdInp) sdInp.value = new Date().toISOString().split('T')[0];
+  if (sdInp) sdInp.value = localDateStr();
   // Force a fresh recompute of suggestions for this target month.
   _startEditState = { targetKey: null, byCat: {} };
   updateStartPreview();
@@ -6547,7 +6596,7 @@ function updateStartPreview() {
         return `
           <div class="sm-preview-row" style="align-items:center">
             <span style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
-              ${cat}
+              ${escHtml(cat)}
               <span title="${tooltipText}" style="font-size:0.58rem;color:${chipColor};background:${chipBg};padding:1px 5px;border-radius:100px;font-weight:700;cursor:help">${chipText} ⓘ</span>
               ${deltaBadge}
             </span>
@@ -6566,7 +6615,7 @@ function updateStartPreview() {
       const hint = isOv
         ? `<span style="font-size:0.68rem;color:var(--blue);margin-left:6px">(override · ${sign}${absDelta.toLocaleString('en-EG')} vs base)</span>`
         : '';
-      return `<div class="sm-preview-row"${isOv?' style="color:var(--blue)"':''}><span>${cat}${hint}</span><span>${Number(amt).toLocaleString('en-EG')} EGP</span></div>`;
+      return `<div class="sm-preview-row"${isOv?' style="color:var(--blue)"':''}><span>${escHtml(cat)}${hint}</span><span>${Number(amt).toLocaleString('en-EG')} EGP</span></div>`;
     }).join('')}
     ${_startEditState.pendingSpecials.map((p, idx) => {
       const chip = p.source === 'carryover'
@@ -6584,7 +6633,7 @@ function updateStartPreview() {
       return `
         <div class="sm-preview-row" style="color:${rowColor};align-items:center">
           <span style="display:flex;align-items:center;gap:4px;flex-wrap:wrap">
-            ${controlLeft}${p.name}${chip}
+            ${controlLeft}${escHtml(p.name)}${chip}
           </span>
           <span style="display:flex;align-items:center;gap:6px">
             <input type="number" min="0" step="50" value="${p.amount}" ${p.keep?'':'disabled'}
@@ -6764,7 +6813,7 @@ async function doStartMonth() {
   const label = document.getElementById('sm-label')?.value?.trim();
   if (!key) { showToast('Please select a month','error'); return; }
 
-  const today = new Date().toISOString().split('T')[0];
+  const today = localDateStr();
   // The cycle boundary — defaults to today but the user can set the real start
   // (e.g. their salary date) so a late start still files expenses correctly.
   const startDate = document.getElementById('sm-start-date')?.value || today;
@@ -6952,11 +7001,11 @@ function openReconcileReview({ earlierKey, laterKey, boundary, toLater, toEarlie
 function _reconcileRow(e) {
   const checked = _reconcileState.selected.has(e.id) ? 'checked' : '';
   const amt  = Math.round(Number(e.amount)||0).toLocaleString('en-EG');
-  const desc = (e.description || '').replace(/</g,'&lt;');
+  const desc = escHtml(e.description || '');
   return `<label style="display:flex;align-items:center;gap:10px;padding:9px 12px;border-bottom:1px solid var(--border);cursor:pointer">
     <input type="checkbox" ${checked} onchange="toggleReconcile('${e.id}', this.checked)" style="flex:none">
     <span style="flex:none;width:78px;font-size:0.74rem;color:var(--muted)">${fmtDate(e.date)}</span>
-    <span style="flex:1;min-width:0;font-size:0.8rem;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${e.category}${desc?` · <span style="color:var(--muted)">${desc}</span>`:''}</span>
+    <span style="flex:1;min-width:0;font-size:0.8rem;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escHtml(e.category)}${desc?` · <span style="color:var(--muted)">${desc}</span>`:''}</span>
     <span style="flex:none;font-size:0.8rem;font-weight:700;color:var(--text)">${amt}</span>
   </label>`;
 }
@@ -7667,7 +7716,7 @@ function renderSuggestPreview() {
     fixedTbody.innerHTML = fixedEntries.length
       ? fixedEntries.map(([cat, amt]) => `
           <tr>
-            <td style="padding:8px;border-bottom:1px solid var(--border);color:var(--muted)">${cat}</td>
+            <td style="padding:8px;border-bottom:1px solid var(--border);color:var(--muted)">${escHtml(cat)}</td>
             <td style="padding:8px;border-bottom:1px solid var(--border);text-align:right;font-variant-numeric:tabular-nums">${Number(amt).toLocaleString('en-EG')} EGP</td>
           </tr>`).join('')
       : `<tr><td colspan="2" style="padding:10px 8px;color:var(--muted);font-size:0.78rem">No additional base categories.</td></tr>`;
@@ -8060,7 +8109,7 @@ async function saveWealthSnapshot() {
   const assetPrices = {};
   assetRows.forEach(a=>{ assetPrices[a.name]=a.price; });
 
-  const monthKey = getActiveKey() || new Date().toISOString().slice(0,7);
+  const monthKey = getActiveKey() || localDateStr().slice(0,7);
   const row = { month_key:monthKey, net_egp:netEgp, net_usd:netUsd, cash_egp:cashEgp, assets_egp:assetsEgp, recv_egp:recvEgp, rates, asset_prices:assetPrices };
   const { error } = await db.from('wealth_snapshots').upsert(row, { onConflict:'month_key' });
   if (error) { showToast('Error: '+error.message,'error'); return; }
@@ -8423,7 +8472,7 @@ function renderWealthDetail() {
           return `<div class="wealth-detail-item">
             <div class="wealth-detail-item-top">
               <div>
-                <div class="wealth-detail-item-title">${typeIcon} ${a.name}</div>
+                <div class="wealth-detail-item-title">${typeIcon} ${escHtml(a.name)}</div>
                 <div class="wealth-detail-item-sub">${a.type}</div>
               </div>
               <div class="wealth-item-actions">
@@ -8472,7 +8521,7 @@ function renderWealthDetail() {
         return `<div class="wealth-detail-item">
           <div class="wealth-detail-item-top">
             <div>
-              <div class="wealth-detail-item-title">${r.person}</div>
+              <div class="wealth-detail-item-title">${escHtml(r.person)}</div>
               <div class="wealth-detail-item-sub">${r.notes || 'No note added'}</div>
             </div>
             <div class="wealth-item-actions">
@@ -8564,7 +8613,7 @@ function renderWealth() {
   const snaps = STATE.wealth.snapshots
     .filter(s => /^\d{4}-\d{2}$/.test(s.month_key || '') && Number.isFinite(s.net_egp))
     .sort((a,b)=>a.month_key.localeCompare(b.month_key));
-  const currentSnapshotKey = activeKey || new Date().toISOString().slice(0, 7);
+  const currentSnapshotKey = activeKey || localDateStr().slice(0, 7);
   const prevSnap = [...snaps].reverse().find(s => s.month_key !== currentSnapshotKey) || snaps[snaps.length - 1] || null;
   const totalDelta = prevSnap ? netEgp - prevSnap.net_egp : null;
   const totalDeltaUsd = (prevSnap && netUsd && prevSnap.net_usd) ? netUsd - prevSnap.net_usd : null;
@@ -9215,7 +9264,7 @@ document.addEventListener('DOMContentLoaded', () => {
 /* ══════════════════════════════════════════
    BOOT
 ══════════════════════════════════════════ */
-document.getElementById('f-date').value = new Date().toISOString().split('T')[0];
+document.getElementById('f-date').value = localDateStr();
 const _nowKey = `${new Date().getFullYear()}-${String(new Date().getMonth()+1).padStart(2,'0')}`;
 const _specInp = document.getElementById('spec-month');
 if (_specInp) _specInp.value = _nowKey;

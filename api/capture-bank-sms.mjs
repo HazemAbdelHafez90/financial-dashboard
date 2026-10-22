@@ -67,8 +67,7 @@ function dateToMonthKey(dateStr) {
   if (!dateStr) return null;
   const [y, m, d] = dateStr.split('-').map(Number);
   if (d >= 19) {
-    const next = new Date(y, m, 1);
-    return next.toISOString().slice(0, 7);
+    return m === 12 ? `${y + 1}-01` : `${y}-${String(m + 1).padStart(2, '0')}`;
   }
   return dateStr.slice(0, 7);
 }

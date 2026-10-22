@@ -1,0 +1,5 @@
+# Deploy only the app. Everything else in this folder (historical data dumps,
+# import scripts, SQL setup, notes) would otherwise be served publicly.
+/*
+!/index.html
+!/api

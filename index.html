@@ -6915,8 +6915,7 @@ function updateStartPreview() {
       }));
     _startEditState.pendingSpecials = [...existingExtras, ...carryovers];
 
-    SUGGEST_CATEGORIES.forEach(cat => {
-      if (!(cat in base)) return; // category might be deleted; skip
+    Object.keys(base).forEach(cat => {
       const sug = suggestionMap[cat];
       const existingOverride = cat in overridesByCat ? overridesByCat[cat] : null;
       // Starting value priority: existing override > suggestion > base
@@ -6924,7 +6923,8 @@ function updateStartPreview() {
                   : (sug && sug.enough ? sug.suggested : base[cat]);
       const explain = (sug && sug.enough)
         ? `Median of last ${sug.monthsUsed} completed month${sug.monthsUsed===1?'':'s'} [${sug.monthlyValues.filter(v=>v>0).map(v=>v.toLocaleString('en-EG')).join(', ')}] + 5% buffer, rounded to 50 EGP → ${sug.suggested.toLocaleString('en-EG')}`
-        : `Not enough history — keeping base ${Number(base[cat]).toLocaleString('en-EG')}`;
+        : sug ? `Not enough history — keeping base ${Number(base[cat]).toLocaleString('en-EG')}`
+        : `Base budget ${Number(base[cat]).toLocaleString('en-EG')} — change it for this month only`;
       _startEditState.byCat[cat] = {
         value: start,
         wasSuggested: sug && sug.enough && existingOverride == null,
@@ -6962,24 +6962,23 @@ function updateStartPreview() {
       const isModified = Math.abs(delta) > 0.5; // floating-point-safe
 
       if (isEditable) {
-        const chipText = editState.hadExistingOverride ? 'OVERRIDE' : (editState.wasSuggested ? 'SUGGESTED' : 'FIXED');
+        const chipText = editState.hadExistingOverride ? 'OVERRIDE' : (editState.wasSuggested ? 'SUGGESTED' : '');
         const chipColor = editState.hadExistingOverride ? 'var(--blue)' : (editState.wasSuggested ? 'var(--amber)' : 'var(--muted)');
         const chipBg = editState.hadExistingOverride ? 'rgba(59,130,246,0.14)' : (editState.wasSuggested ? 'var(--amber-dim)' : 'var(--bg3)');
         const tooltipText = escAttr(editState.explain);
-        const deltaBadge = isModified
-          ? `<span style="font-size:0.66rem;margin-left:6px;color:${delta>0?'var(--red)':'var(--green)'}">${sign}${absDelta.toLocaleString('en-EG')}</span>`
-          : '';
+        const deltaBadge = `<span class="sm-delta">${startDeltaHtml(amt, baseAmt)}</span>`;
+        const chip = chipText ? `<span title="${tooltipText}" style="font-size:0.58rem;color:${chipColor};background:${chipBg};padding:1px 5px;border-radius:100px;font-weight:700;cursor:help">${chipText} ⓘ</span>` : '';
         return `
           <div class="sm-preview-row" style="align-items:center">
             <span style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
               ${escHtml(cat)}
-              <span title="${tooltipText}" style="font-size:0.58rem;color:${chipColor};background:${chipBg};padding:1px 5px;border-radius:100px;font-weight:700;cursor:help">${chipText} ⓘ</span>
+              ${chip}
               ${deltaBadge}
             </span>
             <span style="display:flex;align-items:center;gap:6px">
               <input type="number" min="0" step="50" value="${amt}"
-                onchange="setStartEdit('${cat.replace(/'/g, "\\'")}', this.value)"
-                oninput="setStartEdit('${cat.replace(/'/g, "\\'")}', this.value)"
+                aria-label="${escHtml(cat)} budget for this month"
+                oninput="setStartEdit(${jsArg(cat)}, this.value, this)"
                 style="width:100px;padding:4px 8px;text-align:right;background:var(--bg3);border:1px solid var(--border);border-radius:6px;color:var(--text);font-variant-numeric:tabular-nums"
                 title="${tooltipText}">
               <span style="color:var(--muted);font-size:0.75rem">EGP</span>
@@ -7056,29 +7055,32 @@ function updateStartPreview() {
   }
 }
 
-// Inline edit handler for the 3 suggested rows inside the Start-New-Month preview.
-function setStartEdit(cat, val) {
+// "+1,200" / "−500" vs the base budget, or nothing when unchanged.
+function startDeltaHtml(amt, baseAmt) {
+  const delta = (Number(amt) || 0) - (Number(baseAmt) || 0);
+  if (Math.abs(delta) <= 0.5) return '';
+  return `<span style="font-size:0.66rem;margin-left:6px;color:${delta>0?'var(--red)':'var(--green)'}">${delta>0?'+':'−'}${Math.abs(delta).toLocaleString('en-EG')}</span>`;
+}
+
+// Month total as the preview shows it: edited category values + kept special budgets.
+function startPreviewTotal() {
+  const base = Object.entries(STATE.base).reduce((t, [c, a]) =>
+    t + (_startEditState.byCat[c] ? (Number(_startEditState.byCat[c].value) || 0) : a), 0);
+  const specials = (_startEditState.pendingSpecials || []).reduce((t, p) => t + (p.keep ? (Number(p.amount) || 0) : 0), 0);
+  return base + specials;
+}
+
+// Inline edit handler for the budget rows inside the Start-New-Month preview.
+function setStartEdit(cat, val, inputEl) {
   if (!_startEditState.byCat[cat]) return;
   const n = parseFloat(parseArabicDigits(val));
   _startEditState.byCat[cat].value = isNaN(n) ? 0 : n;
-  // Partial re-render: recalc the total and the delta badge for this row without tearing down the input.
+  // Partial re-render: update this row's delta and the total without tearing down the input.
+  const deltaEl = inputEl?.closest('.sm-preview-row')?.querySelector('.sm-delta');
+  if (deltaEl) deltaEl.innerHTML = startDeltaHtml(_startEditState.byCat[cat].value, STATE.base[cat]);
   const body = document.getElementById('sm-preview-body');
   if (!body) return;
-  // Total row is the last .sm-preview-row in the body; rebuild it from current state.
-  const base = STATE.base;
-  const config = STATE.months[_startEditState.targetKey];
-  const specs = config?.specificBudgets || [];
-  const extras = specs.filter(s => s.type !== 'override');
-  const overridesByCat = {};
-  specs.forEach(s => { if (s.type === 'override') overridesByCat[s.name] = s.amount; });
-  let baseTotal = 0;
-  Object.entries(base).forEach(([c, a]) => {
-    if (_startEditState.byCat[c]) baseTotal += Number(_startEditState.byCat[c].value) || 0;
-    else if (c in overridesByCat) baseTotal += overridesByCat[c];
-    else baseTotal += a;
-  });
-  const specTotal = extras.reduce((s, b) => s + b.amount, 0);
-  const grand = baseTotal + specTotal;
+  const grand = startPreviewTotal();
   const rows = body.querySelectorAll('.sm-preview-row');
   const lastRow = rows[rows.length - 1];
   if (lastRow) {
